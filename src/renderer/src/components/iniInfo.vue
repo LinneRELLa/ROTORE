@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-12 14:03:34
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-13 13:22:29
+ * @LastEditTime: 2025-03-13 16:22:18
  * @FilePath: \torrent\src\renderer\src\components\iniInfo.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -96,11 +96,11 @@ load()
 
 function change(x): void {
   if (done.value) {
-    const number = Number(jidu)
+    const number = Number(jidu.value)
     let z = Number(jidu.value[2])
 
     if (z == 0 && x == -3) {
-      jidu.value = jidu.value[0] + jidu.value[1] + 7
+      jidu.value = jidu.value[0] + jidu.value[1] + '7'
       load()
       return
     }

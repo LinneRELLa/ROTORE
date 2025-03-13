@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-11 13:33:14
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-12 17:14:11
+ * @LastEditTime: 2025-03-13 17:30:57
  * @FilePath: \srce:\new\torrent\torrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -10,6 +10,7 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import WebTorrent from 'https://esm.sh/webtorrent'
 
 const configPath = app.isPackaged
   ? join(process.resourcesPath, 'config/config.json') // 打包后的文件在 resources 目录下
@@ -43,11 +44,9 @@ function createWindow(): void {
     }
   })
 
-  mainWindow.webContents.session.setProxy(
-    {
-      proxyRules: 'socks5://127.0.0.1:7890'
-    }
-  )
+  mainWindow.webContents.session.setProxy({
+    proxyRules: 'socks5://127.0.0.1:7890'
+  })
 
   ipcMain.on('window-min', function () {
     console.log('minimize')
@@ -108,7 +107,30 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
-})
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.
+})(
+  // In this file you can include the rest of your app's specific main process
+  // code. You can also put them in separate files and require them here.
+  async function name() {
+    return new Promise((resolve, reject) => {
+      // 在 Node 环境下运行的 WebTorrent 客户端会使用 TCP/UDP 协议进行数据交换
+      const client = new WebTorrent()
+      client.add('https://acgrip.art/t/324701.torrent', (torrent: any) => {
+        torrent.on('metadata', () => {
+          // 提取 torrent 文件列表信息
+          const filesInfo = torrent.files.map((file) => ({
+            name: file.name,
+            length: file.length
+          }))
+          // 为了仅获取元数据，获取到信息后立即销毁 torrent 和客户端，防止继续下载
+          torrent.destroy(() => {
+            client.destroy()
+            resolve(filesInfo)
+          })
+        })
+        torrent.on('error', (err: Error) => {
+          reject(err.message)
+        })
+      })
+    })
+  }
+)()()
