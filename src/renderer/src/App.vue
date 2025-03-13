@@ -29,8 +29,6 @@ function closewin(): void {
 
 window.electron.ipcRenderer.on('update-counter', (_event, value) => console.log(value))
 
-
-
 document.addEventListener('keydown', (e) => {
   if (e.key === 'F12') {
     window.electron.ipcRenderer.send('toggle-devtools')

@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-11 13:33:14
  * @LastEditors: Linne Rella 3223961933@qq.com
- * @LastEditTime: 2025-03-13 20:24:13
+ * @LastEditTime: 2025-03-13 23:05:12
  * @FilePath: \srce:\new\torrent\torrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -27,7 +27,7 @@ ipcMain.on('toggle-devtools', () => {
     win.webContents.toggleDevTools()
   }
 })
-
+import trackerlist from './trackerlist.json'
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -51,21 +51,35 @@ function createWindow(): void {
         const client = new WebTorrent()
 
         client.add(
-          'https://acgrip.art/t/324701.torrent',
-          { deselect: true, path: 'H:/Downloads/' },
-          (torrent: any) => {
+          'https://acgrip.art/t/324426.torrent',
+          { path: 'H:/Downloads/', announce: trackerlist},
+          (torrent) => {
             setInterval(() => {
               const tosend = client.torrents.map((x) => {
-                return { name: x.name, length: x.length, path: x.path }
+                return {
+                  name: x.name,
+                  length: x.length,
+                  announce: x.announce,
+                  path: x.path,
+                  paused: x.paused,
+                  progress: x.progress,
+                  downloadSpeed: x.downloadSpeed,
+                  downloaded: x.downloaded,
+                  numPeers: x.numPeers,
+                  files: x.files.map((y, index) => {
+                    // y.deselect();
+                    const { name, path, type, progress, downloaded } = y
+                    return { name, path, type, progress, selected: false, downloaded }
+                  })
+                }
               })
 
               mainWindow.webContents.send('update-counter', tosend)
             }, 1000)
 
-            torrent.on('torrent', (torrent) => {
-              for (const file of torrent.files) {
-                console.log('torrent 11', file.name)
-              }
+            torrent.on('metadata', () => {
+              mainWindow.webContents.send('update-counter', 'metadata')
+              console.log('metadata', torrent)
             })
             torrent.on('error', (err: Error) => {
               console.log('1122211')
