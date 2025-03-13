@@ -38,7 +38,8 @@
     "axios": "^1.8.3",
     "element-plus": "^2.9.6",
     "vite-plugin-static-copy": "^2.3.0",
-    "vue-router": "^4.5.0"
+    "vue-router": "^4.5.0",
+    "webtorrent": "^2.5.19"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "3.0.0",
