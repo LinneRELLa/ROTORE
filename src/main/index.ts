@@ -1,8 +1,8 @@
 /*
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-11 13:33:14
- * @LastEditors: Linne Rella 3223961933@qq.com
- * @LastEditTime: 2025-03-13 23:05:12
+ * @LastEditors: chengp 3223961933@qq.com
+ * @LastEditTime: 2025-03-14 13:05:47
  * @FilePath: \srce:\new\torrent\torrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -42,6 +42,15 @@ function createWindow(): void {
       sandbox: false
     }
   })
+
+  // process.env.HTTP_PROXY = 'http://127.0.0.1:7890';
+  // process.env.HTTPS_PROXY = 'https://127.0.0.1:7890';
+  // mainWindow.webContents.session.setProxy({
+  //   proxyRules: 'socks5://127.0.0.1:7890'
+  // })
+
+  let timesignal
+
   async function loadWebTorrent(): Promise<void> {
     const WebTorrent = (await import('webtorrent')).default
 
@@ -49,14 +58,22 @@ function createWindow(): void {
       await new Promise((resolve, reject) => {
         // 在 Node 环境下运行的 WebTorrent 客户端会使用 TCP/UDP 协议进行数据交换
         const client = new WebTorrent()
+        client.on('add', function () {
+          console.log('add')
+        })
+        client.on('torrent', function () {
+          console.log('torrent')
+        })
 
         client.add(
-          'https://acgrip.art/t/324426.torrent',
-          { path: 'H:/Downloads/', announce: trackerlist},
+          'https://acgrip.art/t/324893.torrent',
+          { path: 'E:/', announce: trackerlist, paused: true },
           (torrent) => {
-            setInterval(() => {
+            torrent.deselect(0, torrent.pieces.length - 1, false)
+            timesignal = setInterval(() => {
               const tosend = client.torrents.map((x) => {
                 return {
+                  _selections: x._selections,
                   name: x.name,
                   length: x.length,
                   announce: x.announce,
@@ -67,15 +84,48 @@ function createWindow(): void {
                   downloaded: x.downloaded,
                   numPeers: x.numPeers,
                   files: x.files.map((y, index) => {
+                    if (index == 0) {
+                      y.select()
+                      torrent.resume()
+                    }
                     // y.deselect();
-                    const { name, path, type, progress, downloaded } = y
-                    return { name, path, type, progress, selected: false, downloaded }
+                    const {
+                      name,
+                      path,
+                      type,
+                      progress,
+                      downloaded,
+                      _startPiece,
+                      _endPiece,
+                      offset,
+                      size
+                    } = y
+                    return {
+                      name,
+                      path,
+                      type,
+                      progress,
+                      selected: false,
+                      downloaded,
+                      properties: Object.getOwnPropertyNames(y),
+                      _startPiece,
+                      _endPiece,
+                      offset,
+                      size
+                    }
                   })
                 }
               })
 
               mainWindow.webContents.send('update-counter', tosend)
             }, 1000)
+
+            torrent.on('download', (bytes) => {
+              console.log('just downloaded: ' + bytes)
+              console.log('total downloaded: ' + torrent.downloaded)
+              console.log('download speed: ' + torrent.downloadSpeed)
+              console.log('progress: ' + torrent.progress)
+            })
 
             torrent.on('metadata', () => {
               mainWindow.webContents.send('update-counter', 'metadata')
@@ -108,15 +158,12 @@ function createWindow(): void {
   ])
   Menu.setApplicationMenu(menu)
 
-  mainWindow.webContents.session.setProxy({
-    proxyRules: 'socks5://127.0.0.1:7890'
-  })
-
   ipcMain.on('window-min', function () {
     console.log('minimize')
     mainWindow?.minimize()
   })
   ipcMain.on('window-close', async function () {
+    clearTimeout(timesignal)
     app.quit()
   })
 
