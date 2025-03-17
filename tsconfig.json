@@ -7,7 +7,9 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": "./",
     "paths": {
-      "@renderer/*": ["src/renderer/src/*"]
+      "@renderer/*": ["src/renderer/src/*"],
+      "@Type/*": ["types/*"],
+      "@mainResource/*": ["resources/*"]
     }
   }
 }

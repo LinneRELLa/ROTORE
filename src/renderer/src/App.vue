@@ -1,8 +1,8 @@
 <!--
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-11 13:33:14
- * @LastEditors: Linne Rella 3223961933@qq.com
- * @LastEditTime: 2025-03-13 19:56:04
+ * @LastEditors: chengp 3223961933@qq.com
+ * @LastEditTime: 2025-03-17 16:56:42
  * @FilePath: \torrent\src\renderer\src\App.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -54,6 +54,7 @@ document.addEventListener('keydown', (e) => {
       <div id="navload">
         <div id="nav">
           <router-link to="/home" active-class="active-icon" class="link">首页</router-link>
+          <router-link to="/download" active-class="active-icon" class="link">下载</router-link>
           <!-- <router-link to="/Message" active-class="active-icon" class="link">下载详情</router-link>
         <router-link
           to="/detail"

@@ -1,5 +1,21 @@
 /*
  * @Author: chengp 3223961933@qq.com
+ * @Date: 2025-03-14 08:36:44
+ * @LastEditors: chengp 3223961933@qq.com
+ * @LastEditTime: 2025-03-17 17:22:19
+ * @FilePath: \ElectronTorrent\src\main\index.ts
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
+/*
+ * @Author: chengp 3223961933@qq.com
+ * @Date: 2025-03-14 08:36:44
+ * @LastEditors: chengp 3223961933@qq.com
+ * @LastEditTime: 2025-03-17 09:31:22
+ * @FilePath: \ElectronTorrent\src\main\index.ts
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
+/*
+ * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-11 13:33:14
  * @LastEditors: chengp 3223961933@qq.com
  * @LastEditTime: 2025-03-14 13:05:47
@@ -50,97 +66,125 @@ function createWindow(): void {
   // })
 
   let timesignal
-
+  // let readyToSend=false;
   async function loadWebTorrent(): Promise<void> {
     const WebTorrent = (await import('webtorrent')).default
 
-    async function x(): Promise<void> {
+    async function createWebT(): Promise<void> {
       await new Promise((resolve, reject) => {
         // 在 Node 环境下运行的 WebTorrent 客户端会使用 TCP/UDP 协议进行数据交换
         const client = new WebTorrent()
-        client.on('add', function () {
+
+        function updateclients(): void {
+          const tosend = client.torrents.map((x) => {
+            return {
+              _selections: x._selections,
+              name: x.name,
+              length: x.length,
+              announce: x.announce,
+              path: x.path,
+              paused: x.paused,
+              progress: x.progress,
+              magnetURI: x.magnetURI,
+              downloadSpeed: x.downloadSpeed,
+              downloaded: x.downloaded,
+              numPeers: x.numPeers,
+              files: x.files.map((y, index) => {
+                // y.deselect();
+                const {
+                  name,
+                  path,
+                  type,
+                  progress,
+                  downloaded,
+                  _startPiece,
+                  _endPiece,
+                  offset,
+                  size
+                } = y
+
+                return {
+                  name,
+                  path,
+                  type,
+                  progress,
+                  selected: false,
+                  downloaded,
+                  properties: Object.getOwnPropertyNames(y),
+                  _startPiece,
+                  _endPiece,
+                  offset,
+                  size
+                }
+              })
+            }
+          })
+
+          mainWindow.webContents.send('update-clients', tosend)
+        }
+
+        setInterval(() => {
+          updateclients()
+        }, 500)
+
+        client.on('add', function (des) {
           console.log('add')
         })
         client.on('torrent', function () {
           console.log('torrent')
         })
 
-        client.add(
-          'https://acgrip.art/t/324893.torrent',
-          { path: 'E:/', announce: trackerlist, paused: true },
-          (torrent) => {
-            torrent.deselect(0, torrent.pieces.length - 1, false)
-            timesignal = setInterval(() => {
-              const tosend = client.torrents.map((x) => {
-                return {
-                  _selections: x._selections,
-                  name: x.name,
-                  length: x.length,
-                  announce: x.announce,
-                  path: x.path,
-                  paused: x.paused,
-                  progress: x.progress,
-                  downloadSpeed: x.downloadSpeed,
-                  downloaded: x.downloaded,
-                  numPeers: x.numPeers,
-                  files: x.files.map((y, index) => {
-                    if (index == 0) {
-                      y.select()
-                      torrent.resume()
-                    }
-                    // y.deselect();
-                    const {
-                      name,
-                      path,
-                      type,
-                      progress,
-                      downloaded,
-                      _startPiece,
-                      _endPiece,
-                      offset,
-                      size
-                    } = y
-                    return {
-                      name,
-                      path,
-                      type,
-                      progress,
-                      selected: false,
-                      downloaded,
-                      properties: Object.getOwnPropertyNames(y),
-                      _startPiece,
-                      _endPiece,
-                      offset,
-                      size
-                    }
-                  })
-                }
+        client.on('remove', function () {
+          console.log('remove')
+        })
+
+        client.on('error', function (err) {
+          console.log('error', err)
+        })
+
+        function addTorrent(magURL): void {
+          client.add(
+            magURL,
+            { path: 'E:/Download', announce: trackerlist, paused: false },
+            (torrent) => {
+              torrent.pause()
+              console.log('add done')
+              torrent.deselect(0, torrent.pieces.length - 1, false)
+              client.torrents.map((x) => {
+                x.files.map((y, index) => {
+                  if (index == 0) {
+                    y.select()
+                    torrent.resume()
+                  }
+                })
               })
 
-              mainWindow.webContents.send('update-counter', tosend)
-            }, 1000)
+              torrent.on('download', (bytes) => {
+                console.log('just downloaded: ' + bytes)
+                console.log('total downloaded: ' + torrent.downloaded)
+                console.log('download speed: ' + torrent.downloadSpeed)
+                console.log('progress: ' + torrent.progress)
+              })
 
-            torrent.on('download', (bytes) => {
-              console.log('just downloaded: ' + bytes)
-              console.log('total downloaded: ' + torrent.downloaded)
-              console.log('download speed: ' + torrent.downloadSpeed)
-              console.log('progress: ' + torrent.progress)
-            })
+              // torrent.on('metadata', () => {
+              //   mainWindow.webContents.send('update-counter', 'metadata')
+              //   console.log('metadata', torrent)
+              // })
+              torrent.on('error', (err: Error) => {
+                console.log(err, 'error')
+                reject(err.message)
+              })
+            }
+          )
+        }
 
-            torrent.on('metadata', () => {
-              mainWindow.webContents.send('update-counter', 'metadata')
-              console.log('metadata', torrent)
-            })
-            torrent.on('error', (err: Error) => {
-              console.log('1122211')
-              console.log(err, 'error')
-              reject(err.message)
-            })
-          }
-        )
+        ipcMain.on('addTorrent', (event, url: string) => {
+          console.log('addTorrent', url)
+          addTorrent(url)
+        })
       })
     }
-    x()
+    createWebT()
   }
 
   loadWebTorrent()
