@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useFile } from '@renderer/hooks/useFile'
 // import path from 'path'
 interface IPathConfig {
   base: string
@@ -11,6 +12,7 @@ let PathConfig: IPathConfig = {
   source: ''
 }
 
+const { readJSON } = useFile()
 const ipcRenderer = window.electron.ipcRenderer
 await new Promise((resolve) => {
   ipcRenderer.invoke('getPath').then((meassage) => {
@@ -20,15 +22,15 @@ await new Promise((resolve) => {
   })
 })
 
-function readJSON(path): object {
-  try {
-    const data = window.nodeAPI.fs.readFileSync(path, 'utf8')
-    const jsonData = JSON.parse(data)
-    return jsonData
-  } catch (error) {
-    return { message: error }
-  }
-}
+// function readJSON(path): object {
+//   try {
+//     const data = window.nodeAPI.fs.readFileSync(path, 'utf8')
+//     const jsonData = JSON.parse(data)
+//     return jsonData
+//   } catch (error) {
+//     return { message: error }
+//   }
+// }
 // const fs = window.nodeAPI.fs
 // let publicpath
 // if (process.env.NODE_ENV == 'development') {

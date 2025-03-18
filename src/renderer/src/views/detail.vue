@@ -35,7 +35,7 @@
         class="fanye"
         @click="getpage(String(route.query.key), --page)"
       >
-      <el-icon><ArrowLeft /></el-icon>
+        <el-icon><ArrowLeft /></el-icon>
       </div>
       第{{ page }}页
       <div class="fanye" @click="getpage(String(route.query.key), ++page)">
@@ -51,7 +51,7 @@
               v-if="i.title != '暂无结果' && i.title != '正在加载'"
               @click="copy(String(route.query.key), i.b, i.title)"
             >
-            <el-icon><CopyDocument /></el-icon>
+              <el-icon><CopyDocument /></el-icon>
             </button>
           </div>
         </div>
@@ -210,6 +210,10 @@ onMounted(() => {
   align-items: flex-start;
   align-content: flex-start;
   width: 100%;
+  overflow: auto;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 div {

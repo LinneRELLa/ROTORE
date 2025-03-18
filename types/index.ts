@@ -25,6 +25,7 @@ export interface ITorrentRender {
   ratio?: number
   numPeers?: number
   files: IFileRender[]
+  initURL: string
 }
 
 export interface IWebTorrentRender {

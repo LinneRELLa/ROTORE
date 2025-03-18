@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-17 17:22:19
+ * @LastEditTime: 2025-03-18 15:01:24
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -26,15 +26,33 @@ import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+const publicPath = app.isPackaged ? process.resourcesPath : app.getAppPath()
+import * as fs from 'fs'
 
-const configPath = app.isPackaged
-  ? join(process.resourcesPath, 'config/config.json') // 打包后的文件在 resources 目录下
-  : join(app.getAppPath(), 'config/config.json')
+const configPath = join(publicPath, 'config/config.json')
 
 // console.log(__dirname,configPath)
 
 ipcMain.handle('getPath', async () => {
   return configPath
+})
+
+const DownloadStore = fs.readFileSync(join(publicPath, 'config/DownloadStore.json'), 'utf-8')
+
+ipcMain.handle('getDownloadStore', async () => {
+  console.log(DownloadStore, 'DownloadStore')
+  return DownloadStore
+})
+
+function writeDownloadStore(data: object): void {
+  const filePath = join(publicPath, 'config/DownloadStore.json')
+  const fileContent = JSON.stringify(data, null, 2) // 格式化 JSON
+  fs.writeFileSync(filePath, fileContent, 'utf-8')
+}
+
+ipcMain.handle('setDownloadStore', async (event, data) => {
+  writeDownloadStore(data)
+  console.log('DownloadStore updated')
 })
 
 ipcMain.on('toggle-devtools', () => {
@@ -44,13 +62,14 @@ ipcMain.on('toggle-devtools', () => {
   }
 })
 import trackerlist from './trackerlist.json'
+
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
-    frame: true,
+    frame: false,
     autoHideMenuBar: false,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
@@ -88,6 +107,8 @@ function createWindow(): void {
               magnetURI: x.magnetURI,
               downloadSpeed: x.downloadSpeed,
               downloaded: x.downloaded,
+              initURL: x.initURL,
+              infoHash: x.infoHash,
               numPeers: x.numPeers,
               files: x.files.map((y, index) => {
                 // y.deselect();
@@ -125,13 +146,15 @@ function createWindow(): void {
 
         setInterval(() => {
           updateclients()
-        }, 500)
+        }, 1200)
 
-        client.on('add', function (des) {
+        client.on('add', function () {
           console.log('add')
+          updateclients()
         })
         client.on('torrent', function () {
           console.log('torrent')
+          updateclients()
         })
 
         client.on('remove', function () {
@@ -148,16 +171,18 @@ function createWindow(): void {
             { path: 'E:/Download', announce: trackerlist, paused: false },
             (torrent) => {
               torrent.pause()
-              console.log('add done')
+              torrent.initURL = magURL
+              console.log('add done', torrent)
               torrent.deselect(0, torrent.pieces.length - 1, false)
               client.torrents.map((x) => {
                 x.files.map((y, index) => {
-                  if (index == 0) {
+                  // if (index == 0) {
                     y.select()
-                    torrent.resume()
-                  }
+                
+                  // }
                 })
               })
+              torrent.resume()
 
               torrent.on('download', (bytes) => {
                 console.log('just downloaded: ' + bytes)
@@ -213,6 +238,19 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  mainWindow.on('close', (e) => {
+    // 阻止默认关闭，进行异步操作
+    e.preventDefault()
+    mainWindow.webContents.send('request-downloadstore')
+    ipcMain.once('exportDownloadStoreResponse', (_event, data) => {
+      console.log('exportDownloadStoreResponse')
+      writeDownloadStore(data)
+      // 销毁窗口后退出，防止递归触发 close 事件
+      mainWindow.destroy()
+      app.quit()
+    })
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
