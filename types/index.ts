@@ -10,6 +10,7 @@ export interface IFileRender {
   _endPiece: number
   offset: number
   size: number
+  initselected: boolean
 }
 
 export interface ITorrentRender {
@@ -26,6 +27,7 @@ export interface ITorrentRender {
   numPeers?: number
   files: IFileRender[]
   initURL: string
+  fileSelected: boolean
 }
 
 export interface IWebTorrentRender {

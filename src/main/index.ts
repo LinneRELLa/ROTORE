@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-18 15:01:24
+ * @LastEditTime: 2025-03-19 15:24:21
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -37,13 +37,14 @@ ipcMain.handle('getPath', async () => {
   return configPath
 })
 
+//读取本地下载记录
 const DownloadStore = fs.readFileSync(join(publicPath, 'config/DownloadStore.json'), 'utf-8')
 
 ipcMain.handle('getDownloadStore', async () => {
   console.log(DownloadStore, 'DownloadStore')
   return DownloadStore
 })
-
+//写入本地下载记录
 function writeDownloadStore(data: object): void {
   const filePath = join(publicPath, 'config/DownloadStore.json')
   const fileContent = JSON.stringify(data, null, 2) // 格式化 JSON
@@ -94,6 +95,7 @@ function createWindow(): void {
         // 在 Node 环境下运行的 WebTorrent 客户端会使用 TCP/UDP 协议进行数据交换
         const client = new WebTorrent()
 
+
         function updateclients(): void {
           const tosend = client.torrents.map((x) => {
             return {
@@ -110,7 +112,7 @@ function createWindow(): void {
               initURL: x.initURL,
               infoHash: x.infoHash,
               numPeers: x.numPeers,
-              files: x.files.map((y, index) => {
+              files: x.files.map((y) => {
                 // y.deselect();
                 const {
                   name,
@@ -144,7 +146,7 @@ function createWindow(): void {
           mainWindow.webContents.send('update-clients', tosend)
         }
 
-        setInterval(() => {
+        timesignal=setInterval(() => {
           updateclients()
         }, 1200)
 
@@ -174,15 +176,15 @@ function createWindow(): void {
               torrent.initURL = magURL
               console.log('add done', torrent)
               torrent.deselect(0, torrent.pieces.length - 1, false)
-              client.torrents.map((x) => {
-                x.files.map((y, index) => {
-                  // if (index == 0) {
-                    y.select()
+              // client.torrents.map((x) => {
+              //   x.files.map((y) => {
+              //     // if (index == 0) {
+              //       y.select()
                 
-                  // }
-                })
-              })
-              torrent.resume()
+              //     // }
+              //   })
+              // })
+              // torrent.resume()
 
               torrent.on('download', (bytes) => {
                 console.log('just downloaded: ' + bytes)
@@ -206,6 +208,20 @@ function createWindow(): void {
         ipcMain.on('addTorrent', (event, url: string) => {
           console.log('addTorrent', url)
           addTorrent(url)
+        })
+
+      
+        ipcMain.on('fileSelect', (event, torrentLink: string, filesPath: string[]) => {
+          if (!client) return
+          const targetTorrent = client.torrents.find((t) => t.initURL === torrentLink)
+          if (targetTorrent) {
+            targetTorrent.files.forEach((file) => {
+              if (filesPath.includes(file.path)) {
+                file.select()
+              }
+            })
+            targetTorrent.resume()
+          }
         })
       })
     }
@@ -232,7 +248,6 @@ function createWindow(): void {
     mainWindow?.minimize()
   })
   ipcMain.on('window-close', async function () {
-    clearTimeout(timesignal)
     app.quit()
   })
 
@@ -243,10 +258,13 @@ function createWindow(): void {
   mainWindow.on('close', (e) => {
     // 阻止默认关闭，进行异步操作
     e.preventDefault()
+    clearTimeout(timesignal)
+    console.log('close')
     mainWindow.webContents.send('request-downloadstore')
     ipcMain.once('exportDownloadStoreResponse', (_event, data) => {
       console.log('exportDownloadStoreResponse')
       writeDownloadStore(data)
+      
       // 销毁窗口后退出，防止递归触发 close 事件
       mainWindow.destroy()
       app.quit()

@@ -16,7 +16,24 @@
 -->
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useClientStore } from '@renderer/store/torrent'
+
+const { client } = useClientStore()
+;(async function (): Promise<void> {
+   // @ts-ignore (define in dts)
+  let DownloadStore = await window.electron.ipcRenderer.invoke('getDownloadStore')
+  client.torrents = JSON.parse(DownloadStore)
+})()
+
+ // @ts-ignore (define in dts)
+window.electron.ipcRenderer.on('request-downloadstore', () => {
+  const plainData = JSON.parse(JSON.stringify( client.torrents))
+  // @ts-ignore (define in preload.dts)
+  window.electron.ipcRenderer.send('exportDownloadStoreResponse', plainData)
+})
+
 let mes = ref<string>('')
+// @ts-ignore (define in preload.dts)
 const ipcRenderer = window.electron.ipcRenderer
 
 // const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
@@ -26,11 +43,12 @@ function minimize(): void {
 function closewin(): void {
   ipcRenderer.send('window-close')
 }
-
+// @ts-ignore (define in preload.dts)
 window.electron.ipcRenderer.on('update-counter', (_event, value) => console.log(value))
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'F12') {
+    // @ts-ignore (define in preload.dts)
     window.electron.ipcRenderer.send('toggle-devtools')
   }
 })

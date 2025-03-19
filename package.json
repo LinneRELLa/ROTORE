@@ -37,6 +37,7 @@
     "@element-plus/icons-vue": "^2.3.1",
     "axios": "^1.8.3",
     "element-plus": "^2.9.6",
+    "pinia": "^3.0.1",
     "vite-plugin-static-copy": "^2.3.0",
     "vue-router": "^4.5.0",
     "webtorrent": "^2.5.19"

@@ -1,5 +1,23 @@
+/*
+ * @Author: chengp 3223961933@qq.com
+ * @Date: 2025-03-14 08:36:44
+ * @LastEditors: chengp 3223961933@qq.com
+ * @LastEditTime: 2025-03-19 10:56:27
+ * @FilePath: \ElectronTorrent\src\renderer\src\http\index.ts
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
+/*
+ * @Author: chengp 3223961933@qq.com
+ * @Date: 2025-03-14 08:36:44
+ * @LastEditors: chengp 3223961933@qq.com
+ * @LastEditTime: 2025-03-19 08:41:47
+ * @FilePath: \ElectronTorrent\src\renderer\src\http\index.ts
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 import axios from 'axios'
 import { useFile } from '@renderer/hooks/useFile'
+
+import { useConfigStore } from '@renderer/store/config'
 // import path from 'path'
 interface IPathConfig {
   base: string
@@ -13,11 +31,14 @@ let PathConfig: IPathConfig = {
 }
 
 const { readJSON } = useFile()
+// @ts-ignore (define in preload.dts)
 const ipcRenderer = window.electron.ipcRenderer
 await new Promise((resolve) => {
   ipcRenderer.invoke('getPath').then((meassage) => {
     PathConfig = readJSON(meassage) as IPathConfig
     console.log(PathConfig)
+    const configStore = useConfigStore()
+    configStore.PathConfig = PathConfig
     resolve(null)
   })
 })
@@ -48,7 +69,7 @@ const http = axios.create({
   method: 'post'
 })
 
-const downurl = axios.create({
+const geturl = axios.create({
   timeout: 0,
   method: 'get'
 })
@@ -79,7 +100,7 @@ const downurl = axios.create({
 
 //   )*/
 
-const normal = (data) => {
+const normal = (data): Promise<object> => {
   return http({
     url: '/api/iniInfo',
     data
@@ -97,11 +118,11 @@ const getInfo = (key: string, page: number): Promise<string> => {
   //   if (!proxy) {
 
   //   } else {
-  //     return downurl({
+  //     return geturl({
   //       url: `${res.source}/page/${page}.xml?term=${key}`
   //     })
   //   }
-  return downurl({
+  return geturl({
     url: `${PathConfig.proxy}/page/${page}.xml?term=${key}`
   })
 }
