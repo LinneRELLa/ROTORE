@@ -28,6 +28,8 @@ export interface ITorrentRender {
   files: IFileRender[]
   initURL: string
   fileSelected: boolean
+  selectedSize: number
+  selectedTotal: number 
 }
 
 export interface IWebTorrentRender {

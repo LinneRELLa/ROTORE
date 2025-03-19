@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-17 14:28:24
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-19 15:29:20
+ * @LastEditTime: 2025-03-19 17:34:22
  * @FilePath: \ElectronTorrent\src\renderer\src\views\Download.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -108,6 +108,21 @@ window.electron.ipcRenderer.on('update-clients', (_event, data: ITorrentRender[]
           ToPatchTorrent.files.push({ ...file, initselected: false })
         }
       }
+      //计算选中的文件 已下载的文件大小/总文件大小
+      ToPatchTorrent.selectedTotal = ToPatchTorrent.files.reduce((acc, cur) => {
+        if (cur.initselected) {
+          return acc + cur.size
+        } else {
+          return acc
+        }
+      }, 0)
+      ToPatchTorrent.selectedSize = ToPatchTorrent.files.reduce((acc, cur) => {
+        if (cur.initselected) {
+          return acc + cur.downloaded
+        } else {
+          return acc
+        }
+      }, 0)
     }
   }
 })
@@ -152,7 +167,9 @@ function download(): void {
     magnetURI: magUrl.value,
     initURL: magUrl.value,
     fileSelected: false,
-    files: []
+    files: [],
+    selectedSize: 0,
+    selectedTotal: 0
   })
   // @ts-ignore (define in dts)
   window.electron.ipcRenderer.send('addTorrent', magUrl.value)
