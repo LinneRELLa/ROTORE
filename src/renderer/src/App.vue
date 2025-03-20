@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-11 13:33:14
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-17 16:56:42
+ * @LastEditTime: 2025-03-20 16:36:31
  * @FilePath: \torrent\src\renderer\src\App.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -40,41 +40,66 @@ document.addEventListener('keydown', (e) => {
     window.electron.ipcRenderer.send('toggle-devtools')
   }
 })
+
+const navRoutes = [
+  { path: '/home', name: '首页', icon: 'House' },
+  { path: '/download', name: '下载', icon: 'Download' }
+  // 其他路由...
+]
 </script>
 
 <template>
-  <div id="app">
-    <div id="top">
-      <div class="left">
-        <img
-          src="@renderer/assets/Xlogo2.png"
-          style="height: 100%; position: absolute; left: 10px"
-        />{{ mes }}
+  <div class="app-container">
+    <!-- 顶部控制栏 -->
+    <header class="app-header">
+      <div class="draggable-area">
+        <img src="@renderer/assets/Xlogo2.png" class="app-logo" alt="logo" />
+        <span class="app-title">{{ mes }}</span>
       </div>
-      <div class="right">
-        <div class="minimize" @click="minimize">一</div>
-        <div class="close" @click="closewin">X</div>
+
+      <div class="window-controls">
+        <el-tooltip content="最小化" placement="bottom">
+          <div class="control-btn minimize" @click="minimize">
+            <el-icon><Minus /></el-icon>
+          </div>
+        </el-tooltip>
+        <el-tooltip content="关闭" placement="bottom">
+          <div class="control-btn close" @click="closewin">
+            <el-icon><Close /></el-icon>
+          </div>
+        </el-tooltip>
       </div>
-    </div>
-    <div class="down">
-      <div id="navload">
-        <div id="nav">
-          <router-link to="/home" active-class="active-icon" class="link">首页</router-link>
-          <router-link to="/download" active-class="active-icon" class="link">下载</router-link>
-          <!-- <router-link to="/Message" active-class="active-icon" class="link">下载详情</router-link>
-        <router-link
-          to="/detail"
-          active-class="active-icon"
-          class="link"
-          v-show="this.$route.name == 'detail'"
-          >番剧详情</router-link
-        >
-        <router-link to="/option" active-class="active-icon" class="link">设置</router-link> -->
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="app-main">
+      <!-- 导航侧边栏 -->
+      <nav class="app-sidebar">
+        <div class="nav-menu">
+          <router-link
+            v-for="route in navRoutes"
+            :key="route.path"
+            :to="route.path"
+            class="nav-item"
+            active-class="active"
+          >
+            <el-icon class="nav-icon">
+              <component :is="route.icon" />
+            </el-icon>
+            <!-- <span class="nav-text">{{ route.name }}</span> -->
+          </router-link>
         </div>
+      </nav>
+
+      <!-- 内容区域 -->
+      <div class="content-wrapper">
+        <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
       </div>
-      <div class="cont"></div>
-      <router-view />
-    </div>
+    </main>
   </div>
 </template>
 
@@ -94,104 +119,148 @@ html {
 
 <!-- 组件局部样式 -->
 <style lang="less" scoped>
-#app {
+.app-container {
+  --header-height: 48px;
+  --sidebar-width: 80px;
+  --bg-color: #1a1a1a;
+  --text-color: rgba(255, 255, 255, 0.85);
+  --border-color: rgba(255, 255, 255, 0.12);
+  --primary-color: #409eff;
+  --hover-bg: rgba(255, 255, 255, 0.08);
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: white;
-  background: rgba(36, 40, 47, 1);
-  min-height: 100vh;
-  min-width: 100vw;
+  background: var(--bg-color);
+  color: var(--text-color);
+  width:100vw;
+}
 
-  /* 顶部区域 */
-  #top {
+.app-header {
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--border-color);
+  backdrop-filter: blur(8px);
+  position: relative;
+  z-index: 1000;
+
+  .draggable-area {
+    -webkit-app-region: drag;
     display: flex;
-    justify-content: space-around;
-    gap: 4px;
     align-items: center;
-    position: fixed;
-    width: 100%;
-    background: rgb(36, 40, 47);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    height: 31px;
-    z-index: 90;
-    top: 0;
-
-    .left {
-      flex: 1;
-      height: 31px;
-      -webkit-app-region: drag;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      img {
-        float: left;
-      }
-    }
-
-    .right {
-      display: flex;
-
-      div {
-        cursor: pointer;
-        z-index: 99;
-        padding-right: 15px;
-      }
-    }
+    gap: 12px;
+    flex: 1;
+    height: 100%;
   }
 
-  /* 内容下方区域 */
-  .down {
+  .app-logo {
+    height: 28px;
+    width: auto;
+  }
+
+  .app-title {
+    font-size: 16px;
+    font-weight: 500;
+  }
+}
+
+.window-controls {
+  display: flex;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+
+  .control-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
     display: flex;
-    flex-direction: columns;
-    margin-top: 31px;
-    width: 100%;
-    height: calc(100vh - 31px);
-  }
-}
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
 
-/* 导航和链接相关 */
-a {
-  text-decoration: none;
-}
+    &:hover {
+      background: var(--hover-bg);
 
-.link {
-  font-size: 30px;
-  color: white;
-  display: block;
-  width: 60px;
-  margin: 10px 10px;
+      &.close:hover {
+        background: #ff4d4f;
+        color: white;
+      }
+    }
 
-  &:hover {
-    color: rgba(210, 210, 210, 0.7);
-  }
-}
-
-nav {
-  padding: 30px;
-
-  a {
-    font-weight: bold;
-    color: #2c3e50;
-
-    &.router-link-exact-active {
-      color: #42b983;
+    .el-icon {
+      font-size: 18px;
     }
   }
 }
 
-#navload {
-  width: 90px;
-  border-right: 1px solid rgba(255, 255, 255, 0.3);
+.app-main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
 }
 
-.active-icon {
-  color: rgba(210, 210, 210, 0.7);
-  background: rgba(100, 100, 100, 0.6);
-  border-radius: 6px;
+.app-sidebar {
+  width: var(--sidebar-width);
+  border-right: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.3);
+  transition: width 0.2s;
+
+  .nav-menu {
+    padding: 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    margin: 0 8px;
+    border-radius: 8px;
+    color: var(--text-color);
+    transition: all 0.2s;
+
+    &:hover {
+      background: var(--hover-bg);
+    }
+
+    &.active {
+      background: var(--primary-color);
+      color: white;
+    }
+  }
+
+  .nav-icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  .nav-text {
+    font-size: 12px;
+  }
+}
+
+.content-wrapper {
+  flex: 1;
+  padding: 24px;
+  overflow: auto;
+  position: relative;
+}
+
+// 过渡动画
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
