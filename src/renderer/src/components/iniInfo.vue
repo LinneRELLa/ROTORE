@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-12 14:03:34
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-13 16:22:18
+ * @LastEditTime: 2025-03-20 17:07:37
  * @FilePath: \torrent\src\renderer\src\components\iniInfo.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -15,39 +15,42 @@
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AEc
 -->
 <template>
-  <div class="hello" :style="`background-image: url(${bkg});`">
-    <div class="mask">
-      <div class="top">
-        <div class="change" :class="{ able: done }" @click="change(-3)">
+  <div class="ini-info" :style="{ backgroundImage: 'url(' + bkg + ')' }">
+    <div class="overlay">
+      <header class="controls">
+        <button class="change" :class="{ enabled: done }" @click="change(-3)">
           <el-icon><ArrowLeft /></el-icon>
-        </div>
-        <div class="jidu">当前季度:{{ jidu }}</div>
-        <div class="change" :class="{ able: done }" @click="change(3)">
+        </button>
+        <span class="quarter">当前季度：{{ jidu }}</span>
+        <button class="change" :class="{ enabled: done }" @click="change(3)">
           <el-icon><ArrowRight /></el-icon>
-        </div>
-      </div>
-      <div
-        v-for="(x, index) in info"
-        style="overflow: hidden; display: flex; flex-wrap: wrap"
-        class="ava"
-        :key="index"
-      >
-        <div class="hr">
-          <div class="xingqi">{{ xingqi[x.day] }}</div>
-          <hr />
-        </div>
-        <div v-for="(i, index1) in x.children" class="normal" :key="index1">
-          <router-link :to="`detail?key=${i['关键字']}`">
-            <div :style="`background-image:url(${i['图床']})`" class="font"></div>
-          </router-link>
-          {{ i.Name }}
-        </div>
-        <br />
-      </div>
+        </button>
+      </header>
+      <section class="schedule">
+        <article v-for="(dayInfo, dayIndex) in info" :key="dayIndex" class="day-schedule">
+          <div class="day-label">
+            <span>{{ xingqi[dayInfo.day] }}</span>
+            <hr />
+          </div>
+          <div class="items">
+            <router-link 
+              v-for="(item, itemIndex) in dayInfo.children" 
+              :key="itemIndex" 
+              :to="`/detail?key=${item['关键字']}`"
+              class="item-link"
+            >
+              <div 
+                class="item-image" 
+                :style="{ backgroundImage: 'url(' + item['图床'] + ')' }"
+              ></div>
+              <div class="item-name">{{ item.Name }}</div>
+            </router-link>
+          </div>
+        </article>
+      </section>
     </div>
   </div>
 </template>
-
 
 <script setup lang="ts">
 import { ref } from 'vue'
@@ -128,110 +131,122 @@ function change(x): void {
 
 
 <style scoped lang="less">
-.xingqi {
-  width: 120px;
-  margin: 10px;
-  margin-right: 10px;
-
-  font-size: 35px;
-  align-self: center;
-  // background: rgba(255, 255, 255, 0.1);
-}
-
-.hello {
-  color: white;
-  background: rgba(36, 40, 47, 1);
-  background-size: auto 100%;
-  animation: bkg 10s ease 0s infinite alternate;
-
-  .mask {
-    background: rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(6px);
-  }
-}
-
-@keyframes bkg {
-  0% {
-    background-position: 50% 0;
-  }
-
-  50% {
-    background-position: 50% -5px;
-  }
-
-  100% {
-    background-position: 50% 5px;
-  }
-}
-
-h3 {
-  margin: 40px 0 0;
-}
-
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-
-li {
-  display: inline-block;
-  margin: 0 10px;
-}
-
-a {
-  color: #42b983;
-}
-
-.hr {
-  width: 100%;
-}
-
-hr {
-  width: 98%;
-}
-
-.font {
-  transition: all 0.5s ease;
-  cursor: pointer;
-  width: 205px;
-
-  height: 242px;
-
-  text-align: center;
-  background: rgba(255, 255, 255, 0.2) center no-repeat;
-  background-size: auto 96%;
-
-  &:hover {
-    background-size: auto 120%;
-  }
-}
-
-.normal {
-  margin: 0 10px 10px 10px;
-  max-width: 200px;
-}
-
-.top {
+.ini-info {
+  min-height: 100vh;
+  color: #fff;
+  background-size: cover;
+  background-position: center;
+  animation: subtle-move 10s ease infinite alternate;
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 8px;
+  padding: 20px;
+  
+  .overlay {
+    // background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(6px);
+    border-radius: 8px;
+    padding: 20px;
+    width: 90%;
+    max-width: 1200px;
+  }
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  gap: 20px;
   font-size: 20px;
-  margin: 10px 0;
-
-  div {
-    // border: 1px solid rgba(255, 255, 255, 0.3);
-  }
-
+  
   .change {
-    width: 20px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .able {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #fff;
     cursor: pointer;
+    transition: transform 0.3s ease;
+    
+    &:hover,
+    &.enabled {
+      transform: scale(1.1);
+    }
+  }
+  
+  .quarter {
+    font-weight: bold;
+  }
+}
+
+.schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  
+  .day-schedule {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    
+    .day-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      
+      span {
+        font-size: 24px;
+        width: 120px;
+      }
+      
+      hr {
+        flex: 1;
+        border: none;
+        border-top: 1px solid #fff;
+      }
+    }
+    
+    .items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      
+      .item-link {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-decoration: none;
+        color: inherit;
+        width: 200px;
+        
+        .item-image {
+          width: 200px;
+          height: 240px;
+          background-size: cover;
+          background-position: center;
+          border-radius: 4px;
+          transition: transform 0.3s ease;
+          
+          &:hover {
+            transform: scale(1.05);
+          }
+        }
+        
+        .item-name {
+          margin-top: 8px;
+          text-align: center;
+        }
+      }
+    }
+  }
+}
+
+@keyframes subtle-move {
+  0% {
+    background-position: center top;
+  }
+  100% {
+    background-position: center bottom;
   }
 }
 </style>
