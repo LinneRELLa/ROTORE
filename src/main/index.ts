@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-20 09:58:57
+ * @LastEditTime: 2025-03-20 15:37:34
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -207,6 +207,21 @@ function createWindow(): void {
         ipcMain.on('addTorrent', (event, url: string) => {
           console.log('addTorrent', url)
           addTorrent(url)
+        })
+
+        ipcMain.on('removeTorrent', (event, initURL: string, removeFile: boolean = false) => {
+          if (client) {
+            const targetTorrent = client.torrents.find((t) => t.initURL === initURL)
+            if (targetTorrent) {
+              client.remove(targetTorrent.infoHash, { destroyStore: removeFile }, (err: Error) => {
+                if (err) {
+                  console.error('removeTorrent error:', err)
+                } else {
+                  console.log('Torrent removed:', initURL)
+                }
+              })
+            }
+          }
         })
 
         ipcMain.on('fileSelect', (event, torrentLink: string, filesPath: string[]) => {

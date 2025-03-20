@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-17 14:28:24
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-20 14:39:52
+ * @LastEditTime: 2025-03-20 15:51:49
  * @FilePath: \ElectronTorrent\src\renderer\src\views\Download.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -23,10 +23,22 @@
       <el-button :disabled="!isVliadUrl" @click="download">下载</el-button>
     </el-tooltip>
 
-    <div v-for="x in ClientStore.AlltorrentsStore" :key="x.infoHash" @click="selectFile(x)">
+    <div v-for="x in ClientStore.AlltorrentsStore" :key="x.infoHash">
       <div class="TorrentName">{{ x.name }}</div>
       {{ x.files.length }} {{ x.progress?.toFixed(4) || 0 }} {{ x.downloaded || 0 }}
       {{ x.fileSelected ? '已选' : '待选' }}
+      <el-icon v-if="!x.fileSelected" @click="selectFile(x)"><Operation /></el-icon>
+      <el-popover  placement="top" :width="160"  trigger="click">
+        <p>确定删除这个任务?</p>
+        <!-- <el-checkbox v-model="deleteFileOptions[x.infoHash]">删除文件</el-checkbox> -->
+        <div style="text-align: right; margin: 0">
+          <el-button size="small" text @click="popoverVisible[x.infoHash] = false">取消</el-button>
+          <el-button size="small" type="primary" @click="confirmDelete(x)">确定</el-button>
+        </div>
+        <template #reference>
+          <el-icon><Close /></el-icon>
+        </template>
+      </el-popover>
     </div>
     <div v-if="selectPop" class="mask">
       <div v-if="ClientStore.currentTorrent?.files.length" class="fileselect">
@@ -57,15 +69,30 @@
 </template>
 <script lang="ts" setup>
 import type { ITorrentRender } from '@Type/index'
-import  { ITorrent } from '@Type/index'
+import { ITorrent } from '@Type/index'
 import { ref, computed } from 'vue'
 import { useTorrent } from '@renderer/hooks/useTorrent'
 
 const { ClientStore } = useTorrent()
 
 let magUrl = ref<string>('')
-
 let selectPop = ref<boolean>(false)
+
+// 新增：保存各任务弹窗显示状态和删除文件选项
+const popoverVisible = ref<{ [key: string]: boolean }>({})
+const deleteFileOptions = ref<{ [key: string]: boolean }>({})
+
+
+
+function confirmDelete(torrent: ITorrentRender): void {
+  Remove(torrent, false)
+  popoverVisible.value[torrent.infoHash] = false
+}
+
+function Remove(torrent: ITorrentRender, removeFile: boolean): void {
+  ClientStore.AlltorrentsStore = ClientStore.AlltorrentsStore.filter((x) => x.infoHash !== torrent.infoHash)
+  window.electron.ipcRenderer.send('removeTorrent', torrent.infoHash, removeFile)
+}
 
 function selectFile(torrent: ITorrentRender): void {
   if (torrent.fileSelected) return
@@ -78,7 +105,6 @@ function sendFileSelect(torrentLink: string, files: string[]): void {
   if (ClientStore.currentTorrent) {
     ClientStore.currentTorrent.fileSelected = true
   }
-
   selectPop.value = false
   ClientStore.currentTorrent = new ITorrent()
 }
