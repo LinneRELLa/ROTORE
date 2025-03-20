@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
  * @LastEditors: Linne Rella 3223961933@qq.com
- * @LastEditTime: 2025-03-20 19:23:30
+ * @LastEditTime: 2025-03-20 21:12:10
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -94,7 +94,7 @@ function createWindow(): void {
       await new Promise((resolve, reject) => {
         // 在 Node 环境下运行的 WebTorrent 客户端会使用 TCP/UDP 协议进行数据交换
         const client = new WebTorrent()
-        function storeTorrents():void {
+        function storeTorrents(): void {
           mainWindow.webContents.send('request-downloadstore')
           ipcMain.once('exportDownloadStoreResponse', (_event, data) => {
             console.log('exportDownloadStoreResponse')
@@ -158,17 +158,14 @@ function createWindow(): void {
         client.on('add', function () {
           console.log('add')
           updateclients()
-          storeTorrents()
         })
         client.on('torrent', function () {
           console.log('torrent')
           updateclients()
-          storeTorrents()
         })
 
         client.on('remove', function () {
           console.log('remove')
-          storeTorrents()
         })
 
         client.on('error', function (err) {
@@ -178,7 +175,7 @@ function createWindow(): void {
         function addTorrent(magURL): void {
           client.add(
             magURL,
-            { path: 'H:/Download', announce: trackerlist, paused: false },
+            { path: 'H:/Downloads', announce: trackerlist, paused: false },
             (torrent) => {
               torrent.pause()
               torrent.initURL = magURL
@@ -219,6 +216,7 @@ function createWindow(): void {
         })
 
         ipcMain.on('removeTorrent', (event, initURL: string, removeFile: boolean = false) => {
+          console.log('removeTorrent')
           if (client) {
             const targetTorrent = client.torrents.find((t) => t.initURL === initURL)
             if (targetTorrent) {
@@ -229,6 +227,8 @@ function createWindow(): void {
                   console.log('Torrent removed:', initURL)
                 }
               })
+            }else{
+              console.log('Torrent not found:', initURL)
             }
           }
         })
@@ -244,6 +244,11 @@ function createWindow(): void {
             })
             targetTorrent.resume()
           }
+        })
+
+        ipcMain.on('writeTorrent', () => {
+          console.log('writeTorrent')
+          storeTorrents()
         })
       })
     }

@@ -2,7 +2,7 @@
  * @Author: Linne Rella 3223961933@qq.com
  * @Date: 2025-03-20 18:08:34
  * @LastEditors: Linne Rella 3223961933@qq.com
- * @LastEditTime: 2025-03-20 19:22:01
+ * @LastEditTime: 2025-03-20 21:14:36
  * @FilePath: \electronTorrent\src\renderer\src\views\Download.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -78,6 +78,14 @@
               <div class="stat-item">
                 <el-icon><Download /></el-icon>
                 {{ formatSize(x.downloaded || 0) }}
+              </div>
+              <div class="stat-item" v-if="!x.cleared">
+                <el-icon><Sort /></el-icon>
+                {{ formatSize(x.downloadSpeed || 0) + '/s' }}
+              </div>
+              <div class="stat-item" style="cursor: pointer;" @click="openfolder(x)">
+                <el-icon><Folder /></el-icon>
+                {{ '打开目录' }}
               </div>
             </div>
           </div>
@@ -180,7 +188,8 @@ function Remove(torrent: ITorrentRender, removeFile: boolean): void {
   ClientStore.AlltorrentsStore = ClientStore.AlltorrentsStore.filter(
     (x) => x.infoHash !== torrent.infoHash
   )
-  window.electron.ipcRenderer.send('removeTorrent', torrent.infoHash, removeFile)
+  window.electron.ipcRenderer.send('removeTorrent', torrent.initURL, removeFile)
+  window.electron.ipcRenderer.send('writeTorrent')
 }
 
 function selectFile(torrent: ITorrentRender): void {
@@ -188,6 +197,7 @@ function selectFile(torrent: ITorrentRender): void {
   ClientStore.currentTorrent = torrent
   selectPop.value = true
 }
+
 
 function sendFileSelect(torrentLink: string, files: string[]): void {
   window.electron.ipcRenderer.send('fileSelect', torrentLink, files)
@@ -311,8 +321,14 @@ function download(): void {
     cleared: false,
     error: ''
   })
+ 
 
   window.electron.ipcRenderer.send('addTorrent', magUrl.value)
+  window.electron.ipcRenderer.send('writeTorrent')
+}
+
+function openfolder(torrent: ITorrentRender): void {
+  window.nodeAPI.shell.openPath(torrent.path)
 }
 </script>
 <style lang="less" scoped>

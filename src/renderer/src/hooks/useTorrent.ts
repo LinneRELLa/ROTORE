@@ -104,6 +104,7 @@ export function useTorrent(): {
                 })
 
               ToPatchTorrent.cleared = true
+              window.electron.ipcRenderer.send('writeTorrent')
             }
           }
         }
