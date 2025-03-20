@@ -20,6 +20,7 @@ export interface ITorrentRender {
   size?: number
   progress?: number
   downloadSpeed?: number
+  path?: string
   uploadSpeed?: number
   timeRemaining?: number
   downloaded?: number
@@ -29,9 +30,36 @@ export interface ITorrentRender {
   initURL: string
   fileSelected: boolean
   selectedSize: number
-  selectedTotal: number 
+  selectedTotal: number
+  cleared: boolean
+  error: string
 }
 
+export class ITorrent implements ITorrentRender {
+  constructor(
+    public name: string = '',
+    public magnetURI: string = '',
+    public infoHash: string = '',
+    public files: IFileRender[] = [],
+    public initURL: string = '',
+    public fileSelected: boolean = false,
+    public selectedSize: number = 0,
+    public selectedTotal: number = 0,
+    public cleared: boolean = false,
+    public error: string = ''
+  ) {
+    this.name = name 
+    this.magnetURI = magnetURI 
+    this.infoHash = infoHash
+    this.files = files 
+    this.initURL = initURL 
+    this.fileSelected = fileSelected 
+    this.selectedSize = selectedSize 
+    this.selectedTotal = selectedTotal 
+    this.cleared = cleared 
+    this.error = error 
+  }
+}
 export interface IWebTorrentRender {
   torrents: ITorrentRender[]
 }

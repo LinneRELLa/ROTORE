@@ -2,25 +2,36 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-17 14:28:24
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-19 17:34:22
+ * @LastEditTime: 2025-03-20 14:39:52
  * @FilePath: \ElectronTorrent\src\renderer\src\views\Download.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
+///
+<reference path="@preload/index.d.ts" />
 <template>
   <div>
     <h1>Download</h1>
     <p>Download page</p>
-    <el-input v-model.trim="magUrl"></el-input>
-    <button @click="download">Download</button>
-    <div v-for="x in allTorrents" :key="x.infoHash" @click="selectFile(x)">
+    <el-input v-model.trim="magUrl" placeholder="磁力链接/http https 链接/本地文件路径"></el-input>
+    <el-tooltip
+      class="box-item"
+      effect="dark"
+      content="链接无效"
+      placement="top-start"
+      :disabled="isVliadUrl"
+    >
+      <el-button :disabled="!isVliadUrl" @click="download">下载</el-button>
+    </el-tooltip>
+
+    <div v-for="x in ClientStore.AlltorrentsStore" :key="x.infoHash" @click="selectFile(x)">
       <div class="TorrentName">{{ x.name }}</div>
       {{ x.files.length }} {{ x.progress?.toFixed(4) || 0 }} {{ x.downloaded || 0 }}
       {{ x.fileSelected ? '已选' : '待选' }}
     </div>
-    <div class="mask" v-if="selectPop">
-      <div class="fileselect">
+    <div v-if="selectPop" class="mask">
+      <div v-if="ClientStore.currentTorrent?.files.length" class="fileselect">
         <div
-          v-for="file in currentTorrent?.files"
+          v-for="file in ClientStore.currentTorrent?.files"
           :key="file.path"
           @click="file.initselected = !file.initselected"
         >
@@ -31,106 +42,50 @@
         <div
           @click="
             sendFileSelect(
-              currentTorrent?.initURL || '',
-              currentTorrent?.files.filter((x) => x.initselected).map((x) => x.path) || []
+              ClientStore.currentTorrent?.initURL || '',
+              ClientStore.currentTorrent?.files.filter((x) => x.initselected).map((x) => x.path) ||
+                []
             )
           "
         >
           确认下载
         </div>
       </div>
+      <div v-else class="fileselect" @click="selectPop = false">正在获取文件...</div>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
 import type { ITorrentRender } from '@Type/index'
-import { ref } from 'vue'
-import { useClientStore } from '@renderer/store/torrent'
+import  { ITorrent } from '@Type/index'
+import { ref, computed } from 'vue'
+import { useTorrent } from '@renderer/hooks/useTorrent'
+
+const { ClientStore } = useTorrent()
 
 let magUrl = ref<string>('')
-let clientTorrents = ref<ITorrentRender[]>([])
-let allTorrents = ref<ITorrentRender[]>([])
-let currentTorrent = ref<ITorrentRender | null>(null)
+
 let selectPop = ref<boolean>(false)
 
 function selectFile(torrent: ITorrentRender): void {
   if (torrent.fileSelected) return
-  currentTorrent.value = torrent
+  ClientStore.currentTorrent = torrent
   selectPop.value = true
 }
 
 function sendFileSelect(torrentLink: string, files: string[]): void {
-  // @ts-ignore (define in dts)
   window.electron.ipcRenderer.send('fileSelect', torrentLink, files)
-  if (currentTorrent.value) {
-    currentTorrent.value.fileSelected = true
+  if (ClientStore.currentTorrent) {
+    ClientStore.currentTorrent.fileSelected = true
   }
 
   selectPop.value = false
-  currentTorrent.value = null
+  ClientStore.currentTorrent = new ITorrent()
 }
 
-;(async function (): Promise<void> {
-  allTorrents.value = useClientStore().client.torrents
-})()
-
-function assignIfDifferent(target: object, source: object): boolean {
-  let changed = false
-  for (const key in source) {
-    if (target[key] !== source[key]) {
-      target[key] = source[key]
-      changed = true
-    }
-  }
-  return changed
-}
-
-// @ts-ignore (define in dts)
-window.electron.ipcRenderer.on('update-clients', (_event, data: ITorrentRender[]) => {
-  clientTorrents.value = data
-  console.log(allTorrents.value, '<br><br>', data)
-  for (let x of data) {
-    let ToPatchTorrent = allTorrents.value.find((torrent) => {
-      return sameTorrent(torrent, x)
-    })
-
-    if (ToPatchTorrent) {
-      const { files, ...otherProps } = x
-      console.log(assignIfDifferent(ToPatchTorrent, otherProps), 'patch')
-
-      for (let file of files) {
-        let ToPatchFile = ToPatchTorrent.files.find((f) => f.path === file.path)
-        if (ToPatchFile) {
-          console.log('patchfile')
-          assignIfDifferent(ToPatchFile, file)
-        } else {
-          console.log('newfile')
-          ToPatchTorrent.files.push({ ...file, initselected: false })
-        }
-      }
-      //计算选中的文件 已下载的文件大小/总文件大小
-      ToPatchTorrent.selectedTotal = ToPatchTorrent.files.reduce((acc, cur) => {
-        if (cur.initselected) {
-          return acc + cur.size
-        } else {
-          return acc
-        }
-      }, 0)
-      ToPatchTorrent.selectedSize = ToPatchTorrent.files.reduce((acc, cur) => {
-        if (cur.initselected) {
-          return acc + cur.downloaded
-        } else {
-          return acc
-        }
-      }, 0)
-    }
-  }
-})
-
-// function openFolder(torrent): void {
-//   // @ts-ignore (define in dts)
-//   window.nodeAPI.shell.openPath(torrent.path)
-// }
+// ;(async function (): Promise<void> {
+//   ClientStore.AlltorrentsStore = useClientStore().client.torrents
+// })()
 
 /**
  * 获取magnet中的参数
@@ -154,14 +109,70 @@ function normalize(magnet: string, key: string): string | null {
 //   return normalize(link1, 'xt') === normalize(link2, 'xt')
 // }
 
-function sameTorrent(torrent1, torrent2): boolean {
-  return torrent1.initURL === torrent2.initURL || torrent1.infoHash === torrent2.infoHash
+//判断是否有效
+function isValidTorrentIdentifier(input): boolean {
+  // 1. 如果是字符串，则可能是：
+  if (typeof input === 'string') {
+    // a. Magnet URI：必须以 "magnet:" 开头，并含有 xt=urn:btih: 后跟 40 个十六进制或 32 个 base32 字符
+    const magnetRegex = /^magnet:\?xt=urn:btih:([a-fA-F0-9]{40}|[A-Z2-7]{32})(?:&.*)?$/
+    if (magnetRegex.test(input)) {
+      return true
+    }
+    // b. http/https 链接，指向 torrent 文件（通常以 .torrent 结尾，允许带参数）
+    const httpUrlRegex = /^(https?:\/\/.*\.torrent(?:\?.*)?)$/i
+    if (httpUrlRegex.test(input)) {
+      return true
+    }
+    // c. 文件系统路径（简单判断以 .torrent 结尾，Node.js 下可用更严格的判断）
+    const fsPathRegex = /.*\.torrent$/i
+    if (fsPathRegex.test(input)) {
+      return true
+    }
+    // d. 纯 info hash 的十六进制字符串（40 个十六进制字符）
+    const hexHashRegex = /^[a-fA-F0-9]{40}$/
+    if (hexHashRegex.test(input)) {
+      return true
+    }
+  }
+
+  // 2. 如果是 Uint8Array，则可能是：
+  if (input instanceof Uint8Array) {
+    // a. info hash 的二进制形式（20 字节）
+    if (input.length === 20) {
+      return true
+    }
+    // b. torrent 文件（二进制 bencode 格式，通常以 "d8:" 开头，即字符 "d", "8", ":"）
+    if (
+      input.length >= 3 &&
+      input[0] === 100 && // 'd'
+      input[1] === 56 && // '8'
+      input[2] === 58
+    ) {
+      // ':'
+      return true
+    }
+  }
+
+  // 3. 如果是对象，则可能是 parse‑torrent 得到的已解析 torrent 对象
+  if (typeof input === 'object' && input !== null) {
+    // 简单判断：是否有 infoHash 属性和 info 对象（实际情况可根据 parse‑torrent 返回的结构做更细致判断）
+    if (typeof input.infoHash === 'string' && input.info && typeof input.info === 'object') {
+      return true
+    }
+  }
+
+  return false
 }
+
+let isVliadUrl = computed(() => {
+  console.log(isValidTorrentIdentifier(magUrl.value), 'isVliadUrl')
+  return isValidTorrentIdentifier(magUrl.value)
+})
 
 function download(): void {
   console.log('download')
-  if (allTorrents.value.find((x) => x.initURL == magUrl.value)) return
-  allTorrents.value.push({
+  if (ClientStore.AlltorrentsStore.find((x) => x.initURL == magUrl.value)) return
+  ClientStore.AlltorrentsStore.push({
     infoHash: magUrl.value,
     name: normalize(magUrl.value, 'dn') || magUrl.value,
     magnetURI: magUrl.value,
@@ -169,9 +180,11 @@ function download(): void {
     fileSelected: false,
     files: [],
     selectedSize: 0,
-    selectedTotal: 0
+    selectedTotal: 0,
+    cleared: false,
+    error: ''
   })
-  // @ts-ignore (define in dts)
+
   window.electron.ipcRenderer.send('addTorrent', magUrl.value)
 }
 </script>

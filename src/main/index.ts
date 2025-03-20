@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-19 15:24:21
+ * @LastEditTime: 2025-03-20 09:58:57
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -95,7 +95,6 @@ function createWindow(): void {
         // 在 Node 环境下运行的 WebTorrent 客户端会使用 TCP/UDP 协议进行数据交换
         const client = new WebTorrent()
 
-
         function updateclients(): void {
           const tosend = client.torrents.map((x) => {
             return {
@@ -146,7 +145,7 @@ function createWindow(): void {
           mainWindow.webContents.send('update-clients', tosend)
         }
 
-        timesignal=setInterval(() => {
+        timesignal = setInterval(() => {
           updateclients()
         }, 1200)
 
@@ -164,7 +163,7 @@ function createWindow(): void {
         })
 
         client.on('error', function (err) {
-          console.log('error', err)
+          console.log('clienterror', err)
         })
 
         function addTorrent(magURL): void {
@@ -180,7 +179,7 @@ function createWindow(): void {
               //   x.files.map((y) => {
               //     // if (index == 0) {
               //       y.select()
-                
+
               //     // }
               //   })
               // })
@@ -198,7 +197,7 @@ function createWindow(): void {
               //   console.log('metadata', torrent)
               // })
               torrent.on('error', (err: Error) => {
-                console.log(err, 'error')
+                console.log(err, 'torrenterror')
                 reject(err.message)
               })
             }
@@ -210,7 +209,6 @@ function createWindow(): void {
           addTorrent(url)
         })
 
-      
         ipcMain.on('fileSelect', (event, torrentLink: string, filesPath: string[]) => {
           if (!client) return
           const targetTorrent = client.torrents.find((t) => t.initURL === torrentLink)
@@ -264,7 +262,7 @@ function createWindow(): void {
     ipcMain.once('exportDownloadStoreResponse', (_event, data) => {
       console.log('exportDownloadStoreResponse')
       writeDownloadStore(data)
-      
+
       // 销毁窗口后退出，防止递归触发 close 事件
       mainWindow.destroy()
       app.quit()

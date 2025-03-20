@@ -16,21 +16,9 @@
 -->
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useClientStore } from '@renderer/store/torrent'
-
-const { client } = useClientStore()
-;(async function (): Promise<void> {
-   // @ts-ignore (define in dts)
-  let DownloadStore = await window.electron.ipcRenderer.invoke('getDownloadStore')
-  client.torrents = JSON.parse(DownloadStore)
-})()
-
- // @ts-ignore (define in dts)
-window.electron.ipcRenderer.on('request-downloadstore', () => {
-  const plainData = JSON.parse(JSON.stringify( client.torrents))
-  // @ts-ignore (define in preload.dts)
-  window.electron.ipcRenderer.send('exportDownloadStoreResponse', plainData)
-})
+import { useTorrent } from '@renderer/hooks/useTorrent'
+const { watchTorrents } = useTorrent()
+watchTorrents()
 
 let mes = ref<string>('')
 // @ts-ignore (define in preload.dts)

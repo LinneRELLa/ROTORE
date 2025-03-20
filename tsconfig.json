@@ -1,6 +1,14 @@
 {
   "files": [],
-  "references": [{ "path": "./tsconfig.node.json" }, { "path": "./tsconfig.web.json" }],
+  "include": [
+    "src/preload/**/*.d.ts", 
+    "src/renderer/**/*",
+    "types/**/*"
+  ],
+  "references": [
+    { "path": "./tsconfig.node.json" },
+    { "path": "./tsconfig.web.json" }
+  ],
   "compilerOptions": {
     "types": ["electron-vite/node"],
     "esModuleInterop": true,
