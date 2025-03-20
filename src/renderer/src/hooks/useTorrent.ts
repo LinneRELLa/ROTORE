@@ -15,8 +15,11 @@ export function useTorrent(): {
 
   ;(async function (): Promise<void> {
     // @ts-ignore (define in dts)
-    const DownloadStore = await window.electron.ipcRenderer.invoke('getDownloadStore')
-    ClientStore.AlltorrentsStore = JSON.parse(DownloadStore)
+    if (!ClientStore.inited) {
+      const DownloadStore = await window.electron.ipcRenderer.invoke('getDownloadStore')
+      ClientStore.AlltorrentsStore = JSON.parse(DownloadStore)
+      ClientStore.inited = true
+    }
   })()
 
   //监听torrents并更新,仅APP.vue引入执行

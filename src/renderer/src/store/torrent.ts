@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type {  ITorrentRender } from '@Type/index'
+import type { ITorrentRender } from '@Type/index'
 import { ITorrent } from '@Type/index'
 
 // useStore 可以是 useUser、useCart 之类的任何东西
@@ -9,11 +9,13 @@ export const useClientStore = defineStore('client', {
     AlltorrentsStore: ITorrentRender[]
     currentTorrent: ITorrentRender
     clientTorrentsStore: ITorrentRender[]
+    inited: boolean
   } => {
     return {
       AlltorrentsStore: [],
       clientTorrentsStore: [],
-      currentTorrent: new ITorrent()
+      currentTorrent: new ITorrent(),
+      inited: false
     }
   }
 })
