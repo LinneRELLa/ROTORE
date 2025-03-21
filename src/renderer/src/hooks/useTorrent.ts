@@ -56,7 +56,7 @@ export function useTorrent(): {
         if (ToPatchTorrent) {
           const { files, ...otherProps } = x
           console.log(assignIfDifferent(ToPatchTorrent, otherProps), 'patch')
-
+          let firstUpdate = false
           for (const file of files) {
             const ToPatchFile = ToPatchTorrent.files.find((f) => f.path === file.path)
             if (ToPatchFile) {
@@ -65,7 +65,13 @@ export function useTorrent(): {
             } else {
               console.log('newfile')
               ToPatchTorrent.files.push({ ...file, initselected: false })
+              firstUpdate = true
             }
+          }
+
+          if (firstUpdate) {
+            console.log('firstUpdate')
+            window.electron.ipcRenderer.send('writeTorrent')
           }
           if (!ToPatchTorrent.cleared) {
             //计算选中的文件 已下载的文件大小/总文件大小

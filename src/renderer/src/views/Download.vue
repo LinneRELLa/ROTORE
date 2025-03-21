@@ -1,8 +1,8 @@
 <!--
  * @Author: Linne Rella 3223961933@qq.com
  * @Date: 2025-03-20 18:08:34
- * @LastEditors: Linne Rella 3223961933@qq.com
- * @LastEditTime: 2025-03-20 21:14:36
+ * @LastEditors: chengp 3223961933@qq.com
+ * @LastEditTime: 2025-03-21 15:41:00
  * @FilePath: \electronTorrent\src\renderer\src\views\Download.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -48,78 +48,145 @@
       </el-input>
     </div>
 
-    <!-- 下载任务列表 -->
-    <div class="task-list">
-      <el-card
-        v-for="x in ClientStore.AlltorrentsStore"
-        :key="x.infoHash"
-        class="task-card"
-        shadow="hover"
-      >
-        <div class="task-content">
-          <!-- 任务信息 -->
-          <div class="task-info">
-            <div class="task-header">
-              <h3 class="task-title" :title="x.name">{{ x.name }}</h3>
-              <el-tag :type="x.fileSelected ? 'success' : 'warning'" size="small">
-                {{ x.fileSelected ? '已选文件' : '待选文件' }}
-              </el-tag>
-            </div>
+    <!-- 主要内容区域 -->
+    <div class="main-content" :class="{ 'has-selected': selectedTask }">
+      <!-- 下载任务列表 -->
+      <div class="task-list-wrapper">
+        <div class="task-list">
+          <el-card
+            v-for="x in ClientStore.AlltorrentsStore"
+            :key="x.infoHash"
+            class="task-card"
+            shadow="hover"
+            @click="selectTask(x)"
+            :class="{ active: selectedTask?.infoHash === x.infoHash }"
+          >
+            <div class="task-content">
+              <!-- 任务信息 -->
+              <div class="task-info">
+                <div class="task-header">
+                  <h3 class="task-title" :title="x.name">{{ x.name }}</h3>
+                  <el-tag :type="x.fileSelected ? 'success' : 'warning'" size="small">
+                    {{ x.fileSelected ? '已选文件' : '待选文件' }}
+                  </el-tag>
+                </div>
 
-            <div class="task-stats">
-              <div class="stat-item">
-                <el-icon><Document /></el-icon>
-                {{ x.files.length }} 个文件
+                <div class="task-stats">
+                  <div class="stat-item">
+                    <el-icon><Document /></el-icon>
+                    {{ x.files.length }} 个文件
+                  </div>
+                  <div class="stat-item">
+                    <el-icon><DataLine /></el-icon>
+                    {{ (((x.progress || 0) as number) * 100).toFixed(4) }}%
+                  </div>
+                  <div class="stat-item">
+                    <el-icon><Download /></el-icon>
+                    {{ formatSize(x.downloaded || 0) }}
+                  </div>
+                  <div class="stat-item" v-if="!x.cleared">
+                    <el-icon><Sort /></el-icon>
+                    {{ formatSize(x.downloadSpeed || 0) + '/s' }}
+                  </div>
+                  <div class="stat-item" style="cursor: pointer" @click.stop="openfolder(x)">
+                    <el-icon><Folder /></el-icon>
+                    {{ '打开目录' }}
+                  </div>
+                </div>
               </div>
-              <div class="stat-item">
-                <el-icon><DataLine /></el-icon>
-                {{ ((x.progress?.toFixed(4) || 0) as number) * 100 }}%
+
+              <!-- 操作按钮 -->
+              <div class="task-actions" @click.stop>
+                <el-button
+                  v-if="
+                    x.fileSelected &&
+                    !x.cleared &&
+                    !ClientStore.clientTorrentsStore.find((y) => y.initURL == x.initURL)
+                  "
+                  type="primary"
+                  size="small"
+                  plain
+                  @click="resume(x)"
+                >
+                  继续下载
+                </el-button>
+
+                <el-button
+                  v-if="!x.fileSelected"
+                  type="primary"
+                  size="small"
+                  plain
+                  @click="selectFile(x)"
+                >
+                  选择文件
+                </el-button>
+
+                <el-popover
+                  placement="top"
+                  :width="200"
+                  trigger="click"
+                  v-model:visible="popoverVisible[x.infoHash]"
+                >
+                  <template #reference>
+                    <el-button type="danger" size="small" plain @click.stop> 删除任务 </el-button>
+                  </template>
+                  <p class="delete-confirm">确认删除该任务？</p>
+                  <div class="delete-actions">
+                    <el-button size="small" @click="popoverVisible[x.infoHash] = false"
+                      >取消</el-button
+                    >
+                    <el-button size="small" type="danger" @click="confirmDelete(x)"
+                      >确认删除</el-button
+                    >
+                  </div>
+                </el-popover>
               </div>
-              <div class="stat-item">
-                <el-icon><Download /></el-icon>
-                {{ formatSize(x.downloaded || 0) }}
-              </div>
-              <div class="stat-item" v-if="!x.cleared">
-                <el-icon><Sort /></el-icon>
-                {{ formatSize(x.downloadSpeed || 0) + '/s' }}
-              </div>
-              <div class="stat-item" style="cursor: pointer;" @click="openfolder(x)">
-                <el-icon><Folder /></el-icon>
-                {{ '打开目录' }}
-              </div>
+            </div>
+          </el-card>
+        </div>
+      </div>
+      <!-- 任务详情侧边栏 -->
+      <transition name="slide-fade">
+        <div v-if="selectedTask" class="task-detail">
+          <div class="detail-header">
+            <h3>{{ selectedTask.name }}</h3>
+            <el-icon class="close-btn" @click="selectedTask = null"><Close /></el-icon>
+          </div>
+
+          <!-- 文件列表 -->
+          <div class="file-list">
+            <div v-for="file in selectedTask.files" :key="file.path" class="file-item">
+              <div class="file-name">{{ file.path }}</div>
+              <div class="file-size">{{ formatSize(file.size) }}</div>
             </div>
           </div>
 
-          <!-- 操作按钮 -->
-          <div class="task-actions">
-            <el-button
-              v-if="!x.fileSelected"
-              @click="selectFile(x)"
-              type="primary"
-              size="small"
-              plain
-            >
-              选择文件
-            </el-button>
+          <!-- 统计信息 -->
+          <div class="stats">
+            <div class="stat-item">
+              <label>下载进度:</label>
+              <span
+                >{{
+                  (
+                    ((selectedTask.selectedSize / selectedTask.selectedTotal || 0) as number) * 100
+                  )?.toFixed(2)
+                }}%</span
+              >
+            </div>
+            <div class="stat-item">
+              <label>下载速度:</label>
+              <span>{{
+                selectedTask.cleared ? '已完成' : formatSpeed(selectedTask.downloadSpeed || 0)
+              }}</span>
+            </div>
+          </div>
 
-            <el-popover
-              placement="top"
-              :width="200"
-              trigger="click"
-              v-model:visible="popoverVisible[x.infoHash]"
-            >
-              <template #reference>
-                <el-button type="danger" size="small" plain> 删除任务 </el-button>
-              </template>
-              <p class="delete-confirm">确认删除该任务？</p>
-              <div class="delete-actions">
-                <el-button size="small" @click="popoverVisible[x.infoHash] = false">取消</el-button>
-                <el-button size="small" type="danger" @click="confirmDelete(x)">确认删除</el-button>
-              </div>
-            </el-popover>
+          <!-- 速度曲线图 -->
+          <div class="chart-container">
+            <div ref="speedChart" style="height: 200px"></div>
           </div>
         </div>
-      </el-card>
+      </transition>
     </div>
 
     <!-- 文件选择弹窗 -->
@@ -167,8 +234,10 @@
 <script lang="ts" setup>
 import type { ITorrentRender } from '@Type/index'
 import { ITorrent } from '@Type/index'
-import { ref, computed } from 'vue'
+import { ref, watch, computed, onBeforeUnmount, nextTick } from 'vue'
 import { useTorrent } from '@renderer/hooks/useTorrent'
+import * as echarts from 'echarts'
+import { ElNotification } from 'element-plus'
 
 const { ClientStore } = useTorrent()
 
@@ -198,9 +267,13 @@ function selectFile(torrent: ITorrentRender): void {
   selectPop.value = true
 }
 
-
 function sendFileSelect(torrentLink: string, files: string[]): void {
-  window.electron.ipcRenderer.send('fileSelect', torrentLink, files)
+  if (ClientStore.clientTorrentsStore.find((x) => x.initURL === torrentLink)) {
+    window.electron.ipcRenderer.send('fileSelect', torrentLink, files)
+  } else {
+    window.electron.ipcRenderer.send('resumeTorrent', torrentLink, files)
+  }
+
   if (ClientStore.currentTorrent) {
     ClientStore.currentTorrent.fileSelected = true
   }
@@ -308,7 +381,16 @@ function formatSize(size: number): string {
 
 function download(): void {
   console.log('download')
-  if (ClientStore.AlltorrentsStore.find((x) => x.initURL == magUrl.value)) return
+  let ExistTorrent = ClientStore.AlltorrentsStore.find((x) => x.initURL == magUrl.value)
+  if (ExistTorrent) {
+    ElNotification({
+      title: 'Warning',
+      message: '已存在同链接的任务',
+      type: 'warning'
+    })
+    return
+  }
+
   ClientStore.AlltorrentsStore.push({
     infoHash: magUrl.value,
     name: normalize(magUrl.value, 'dn') || magUrl.value,
@@ -321,19 +403,135 @@ function download(): void {
     cleared: false,
     error: ''
   })
- 
 
   window.electron.ipcRenderer.send('addTorrent', magUrl.value)
   window.electron.ipcRenderer.send('writeTorrent')
 }
 
-function openfolder(torrent: ITorrentRender): void {
-  window.nodeAPI.shell.openPath(torrent.path)
+function resume(torrent: ITorrentRender): void {
+  window.electron.ipcRenderer.send(
+    'resumeTorrent',
+    torrent.initURL,
+    torrent.files.filter((x) => x.initselected).map((x) => x.path)
+  )
 }
+
+function openfolder(torrent: ITorrentRender): void {
+  if (window.nodeAPI.fs.existsSync(torrent.path)) {
+    window.nodeAPI.shell.openPath(torrent.path)
+  } else {
+    ElNotification({
+      title: 'Warning',
+      message: '目标目录不存在',
+      type: 'warning'
+    })
+  }
+}
+
+// 新增响应式数据
+const selectedTask = ref<ITorrentRender | null>(null)
+const speedChart = ref<HTMLElement | null>(null)
+let chartInstance: echarts.ECharts | null = null
+
+// 新增速度数据缓存
+const speedData = ref<number[]>(Array(60).fill(0))
+
+const selectTask = (task: ITorrentRender): void => {
+  if (selectedTask.value?.infoHash === task.infoHash) {
+    // 如果点击的是已选中的任务，则关闭详情
+    selectedTask.value = null
+  } else {
+    // 更新选中任务并重置速度数据
+    selectedTask.value = task
+    speedData.value = Array(60).fill(0)
+
+    // 如果已有图表实例，先销毁
+    if (chartInstance) {
+      chartInstance.dispose()
+      chartInstance = null
+    }
+
+    // 初始化新图表
+    nextTick(() => {
+      initChart()
+    })
+  }
+}
+
+// 监听选中任务变化
+watch(selectedTask, (newVal, oldVal) => {
+  //未选文件或已完成不监听
+  if (selectedTask.value?.selectedSize == selectedTask.value?.selectedTotal) {
+    stopUpdateInterval()
+    return
+  }
+  if (newVal) {
+    initChart()
+    startUpdateInterval()
+  } else {
+    stopUpdateInterval()
+  }
+  if (oldVal && !newVal) {
+    // 当关闭详情时清理图表
+    if (chartInstance) {
+      chartInstance.dispose()
+      chartInstance = null
+    }
+  }
+})
+
+// 初始化图表
+function initChart(): void {
+  if (speedChart.value) {
+    chartInstance = echarts.init(speedChart.value)
+    const option = {
+      grid: { top: 20, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', show: false },
+      yAxis: { type: 'value' },
+      series: [
+        {
+          type: 'line',
+          smooth: true,
+          data: speedData.value,
+          areaStyle: { color: 'rgba(64, 158, 255, 0.3)' },
+          lineStyle: { color: '#409EFF' }
+        }
+      ]
+    }
+    chartInstance.setOption(option)
+  }
+}
+//任务详情相关
+// 定时更新图表数据
+let updateInterval: ReturnType<typeof setInterval> | null = null
+function startUpdateInterval(): void {
+  updateInterval = setInterval(() => {
+    console.log('updateInterval')
+    if (selectedTask.value) {
+      speedData.value = [...speedData.value.slice(1), selectedTask.value.downloadSpeed || 0]
+      chartInstance?.setOption({ series: [{ data: speedData.value }] })
+    }
+  }, 1000)
+}
+
+function stopUpdateInterval(): void {
+  if (updateInterval) clearInterval(updateInterval)
+}
+
+// 新增速度格式化
+function formatSpeed(speed: number): string {
+  return formatSize(speed) + '/s'
+}
+
+// 组件卸载时清理
+onBeforeUnmount(() => {
+  stopUpdateInterval()
+  if (chartInstance) chartInstance.dispose()
+})
 </script>
 <style lang="less" scoped>
 .download-container {
-  max-width: 1200px;
+  // max-width: 1200px;
   margin: 0 auto;
   padding: 2rem 1rem;
 }
@@ -399,7 +597,7 @@ function openfolder(torrent: ITorrentRender): void {
   .task-title {
     font-size: 1.1rem;
     margin: 0;
-    max-width: 400px;
+    max-width: calc(100vw - 520px);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -411,6 +609,7 @@ function openfolder(torrent: ITorrentRender): void {
     color: #606266;
 
     .stat-item {
+      white-space: nowrap;
       display: flex;
       align-items: center;
       gap: 0.3rem;
@@ -478,6 +677,123 @@ function openfolder(torrent: ITorrentRender): void {
     margin-bottom: 0.5rem;
     color: #909399;
   }
+}
+
+//任务详情相关
+.main-content {
+  display: flex;
+  gap: 24px;
+  transition: all 0.3s ease;
+
+  &.has-selected {
+    .task-list-wrapper {
+      flex: 1;
+      max-width: calc(100% - 400px);
+    }
+    .task-title {
+      max-width: calc(100vw - 820px);
+    }
+  }
+}
+
+.task-list-wrapper {
+  flex: 1;
+  transition: all 0.3s ease;
+}
+
+.task-detail {
+  width: 400px;
+  background: var(--bg-color-secondary);
+  border-left: 1px solid var(--border-color);
+  padding: 24px;
+  // height: calc(100vh - 200px);
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  overflow-y: auto;
+
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+
+    h3 {
+      margin: 0;
+      font-size: 18px;
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .close-btn {
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      transition: background 0.2s;
+
+      &:hover {
+        background: var(--hover-bg);
+      }
+    }
+  }
+}
+
+.file-list {
+  margin-bottom: 24px;
+
+  .file-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px;
+    margin-bottom: 8px;
+    background: var(--bg-color);
+    border-radius: 6px;
+
+    .file-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-size {
+      margin-left: 12px;
+      color: var(--text-secondary);
+    }
+  }
+}
+
+.stats {
+  margin-bottom: 24px;
+
+  .stat-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+
+    label {
+      color: var(--text-secondary);
+    }
+  }
+}
+
+.chart-container {
+  background: var(--bg-color);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
 }
 
 @keyframes rotating {

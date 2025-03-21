@@ -1,58 +1,45 @@
 <template>
-  <div id="hello">
-    <!-- <div v-if="fileName!=undefined"  id="newTask" class="toollip">
-            <div style="text-align: right;align-self: stretch;margin-bottom: 8px"><i class="el-icon-close" @click="back" style="cursor: pointer;"></i></div>
-            <textarea v-model="fileName" class="textarea" rows="8" disabled></textarea>
-            <p style="font-size: 10px;">下载到:</p>
-            <div class="outin"><input  v-model="path" class="input" placeholder="下载目录（默认为当前目录下Download文件夹）">
-                <el-button icon="el-icon-folder-opened" @click="openFile"></el-button>
-            </div>
-            <div :class="Rdnd" @click='Post'>立即下载</div>
-        </div>
-        <div  v-if="fileName!=undefined" id="mask"  @click="back()"></div>
-        <div style="flex-basis: 100%;">{{route.query.key}}</div>
-        <div style="flex:1;flex-basis: 100%;display: flex;justify-content: center;align-items: center;">
-            <div @click="getpage(route.query.key,--page)" style="text-align: right;" class="fanye"><i class="el-icon-caret-left" v-if="this.page!=1" /></div>
-            第{{page}}页
-            <div @click="getpage(route.query.key,++page);" class="fanye"> <i class="el-icon-caret-right" /></div>
-        </div>
-       <div class="nodec">最近下载:{{this.last}}</div> 
-        <div v-for="(x,k) of nodes" class="nodec" :key="k"> <span v-html="k" ></span>
-            <div v-for="(i,ind) of x" class="node" :key="ind"><span v-html="i.t" ></span>
-                <div style="display: flex;align-items: center;">
-                          <button @click="copy(route.query.key,i.b,i.t)" v-if="(i.t!='暂无结果')&&i.t!='正在加载'" ><i class="el-icon-copy-document" /></i></button>
-                 <button @click="openPop(route.query.key,i.b,i.t)" v-if="(i.t!='暂无结果')&&i.t!='正在加载'"><i class="el-icon-download" /></i></button>  
-                </div>
-         </div>
-        </div>-->
-    <div style="flex-basis: 100%">{{ route.query.key }}</div>
-    <div
-      style="flex: 1; flex-basis: 100%; display: flex; justify-content: center; align-items: center"
-    >
-      <div
-        v-if="page != 1"
-        style="text-align: right"
-        class="fanye"
-        @click="getpage(String(route.query.key), --page)"
-      >
-        <el-icon><ArrowLeft /></el-icon>
+  <div class="detail-container">
+    <div class="header">
+      <h2 class="title">{{ route.query.key }}</h2>
+      
+      <div class="pagination">
+        <el-button 
+          circle 
+          :disabled="page === 1"
+          @click="getpage(String(route.query.key), --page)"
+        >
+          <el-icon><ArrowLeft /></el-icon>
+        </el-button>
+        <span class="current-page">第{{ page }}页</span>
+        <el-button 
+          circle 
+          @click="getpage(String(route.query.key), ++page)"
+        >
+          <el-icon><ArrowRight /></el-icon>
+        </el-button>
       </div>
-      第{{ page }}页
-      <div class="fanye" @click="getpage(String(route.query.key), ++page)">
-        <el-icon><ArrowRight /></el-icon>
-      </div>
-      <div v-for="(x, k) of nodes" :key="k" class="nodec">
-        <span v-html="k"></span>
-        <el-icon><Memo /></el-icon>
-        <div v-for="(i, ind) in x" :key="ind" class="node">
-          <span v-html="i.title"></span>
-          <div style="display: flex; align-items: center">
-            <button
-              v-if="i.title != '暂无结果' && i.title != '正在加载'"
+    </div>
+
+    <div class="node-list">
+      <div v-for="(x, k) of nodes" :key="k" class="node-group">
+        <h3 class="group-title">{{ k }}</h3>
+        <div class="node-items">
+          <div 
+            v-for="(i, ind) in x" 
+            :key="ind" 
+            class="node-item"
+          >
+            <span class="node-title">{{ i.title }}</span>
+            <el-button 
+              v-if="i.title !== '暂无结果' && i.title !== '正在加载'"
+              type="primary" 
+              circle 
+              size="small"
               @click="copy(String(route.query.key), i.b, i.title)"
             >
               <el-icon><CopyDocument /></el-icon>
-            </button>
+            </el-button>
           </div>
         </div>
       </div>
@@ -204,308 +191,96 @@ onMounted(() => {
 })
 </script>
 
-<style lang="less" scoped="">
-#hello {
-  display: flex;
-  align-items: flex-start;
-  align-content: flex-start;
-  width: 100%;
-  overflow: auto;
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-div {
-  font-size: 18px;
-  text-align: left;
-  flex-wrap: wrap;
-  margin: 10px 10px 0 10px;
-  font-size: 25px;
-}
-
-span:hover {
-  cursor: pointer;
-}
-
-.fanye {
-  &:hover {
-    color: rgba(255, 255, 255, 0.3);
-  }
-}
-
-.node {
-  font-size: 18px;
-
-  &:hover {
-    background: rgba(199, 199, 210, 0.3);
-  }
-
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  text-align: left;
-  padding: 0 40px;
-}
-
-.nodec {
-  display: flex;
-  justify-content: column;
-  align-items: center;
-  width: 100%;
-}
-</style>
 <style lang="less" scoped>
-.tasks {
-  width: 400px;
-  min-height: 200px;
-  max-height: 400px;
-  overflow: auto;
-  position: relative;
+:root {
+  --bg-color: #1a1a1a;
+  --bg-color-secondary: #2a2a2a;
+  --text-primary: rgba(255, 255, 255, 0.85);
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --border-color: rgba(255, 255, 255, 0.12);
+  --hover-bg: rgba(255, 255, 255, 0.08);
 }
 
-.task:nth-of-type(1) {
+.detail-container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.task:hover {
-  background: rgba(229, 240, 254, 0.1);
-}
-
-#mask {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 3;
-}
-
-.toollip {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 500px;
-  margin: 2px;
-  background: rgba(48, 56, 65, 1);
-  z-index: 4;
-  border-radius: 3px;
-  display: flex;
-  justify-content: space-around;
-  align-items: flex-start;
-  padding: 2px 32px;
-  flex-direction: column;
-  border-radius: 4px;
-  height: 350px;
-}
-
-.title {
-  font-size: 16px;
-  font-weight: 400;
-  color: white;
-  padding: 15px 40px;
-}
-
-#bkg {
-  background: rgba(36, 40, 47);
-  width: 100%;
-  min-width: 728px;
-}
-
-.btn:hover {
-  cursor: pointer;
-  color: rgba(10, 10, 10, 0.5);
-}
-
-.btn {
-  color: white;
-}
-
-#MessageRight {
-  overflow: hidden;
-  height: 100%;
-  font-size: 128px;
-  color: white;
-  font-family: 'Vivaldi';
-  position: relative;
-}
-
-#MessageLeft {
-  float: left;
-  border-right: 1px solid rgba(4, 4, 4, 0.3);
-  height: 100%;
-}
-
-#Msgup {
-  animation: come 1s ease;
-}
-
-#Msgdown {
-  animation: come1 1s ease;
-}
-
-@keyframes come {
-  0% {
-    transform: perspective(2000px) translate3d(30px, 30px, 0);
-  }
-
-  100% {
-    transform: perspective(2000px);
-  }
-}
-
-@keyframes come1 {
-  0% {
-    transform: perspective(2000px) translate3d(-30px, -30px, 0);
-  }
-
-  100% {
-    transform: perspective(2000px) translate3d(0, 0, 0);
-  }
-}
-
-.Logo {
-  transform-style: preserve-3d;
-  position: absolute;
-  margin: -64px -64px;
-  left: 50%;
-  top: 50%;
-}
-
-.tasktitle {
-  width: calc(100% - 20px);
-  background: rgb(36, 40, 47);
-  overflow: hidden;
-  padding: 5px 10px;
-}
-
-.content {
+.header {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
-  color: rgb(211, 214, 218);
-}
+  align-items: center;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
 
-.operate {
-  font-size: 20px;
-  text-align: center;
-}
-
-.input {
-  flex: 1 0 0;
-  border: 1px solid rgb(230, 230, 230);
-  border-radius: 3px 0 0 3px;
-  background: rgba(48, 56, 66, 1);
-
-  padding: 0 20px;
-  color: white;
-}
-
-.textarea {
-  width: calc(100% - 8px);
-  border: 1px solid rgb(230, 230, 230);
-  border-radius: 3px;
-  color: white;
-}
-
-.textarea:focus-visible {
-  border: 1px solid rgb(63, 133, 255);
-}
-
-textarea:focus {
-  border: 1px solid rgb(63, 133, 255);
-  outline: none;
-}
-
-input:focus {
-  border: 1px solid rgb(63, 133, 255);
-  outline: none;
-}
-
-.outin {
-  width: 100%;
-  display: flex;
-  margin: 0;
-
-  .el-button {
-    background: rgba(48, 56, 66, 1);
-    border-radius: 0 3px 3px 0;
-    border-left: none;
+  .title {
+    font-size: 24px;
+    color: var(--text-primary);
+    margin: 0;
   }
 }
 
-/*.outin::before {
-    content: "电脑";
-    display: inline-block;
-    width: 40px;
-    height: 40px;
-    line-height: 40px;
-    position: absolute;
-    left: 40px;
-}*/
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 
-.Rdnd {
-  width: 100%;
-  text-align: center;
-  cursor: pointer;
-  background: rgb(245, 245, 245);
-  padding: 10px 0;
-  margin: 20px 0;
-  color: rgb(204, 204, 211);
+  .current-page {
+    font-size: 16px;
+    color: var(--text-secondary);
+  }
 }
 
-.Rdnd-active {
-  padding: 10px 0;
-  width: 100%;
-  text-align: center;
-  cursor: pointer;
-  background: rgb(38, 112, 234);
-  font-size: 16px;
-  margin: 20px 0;
-  color: white;
+.node-list {
+  display: grid;
+  gap: 24px;
 }
 
-#dnd {
-  border: none;
-  border-radius: 3px;
-  background: rgba(231, 239, 251, 0.8);
-  color: rgba(63, 133, 255);
-  cursor: pointer;
-  font-size: 18px;
-  float: left;
-  margin: 10px 20px;
+.node-group {
+  background: var(--bg-color-secondary);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  .group-title {
+    font-size: 18px;
+    color: var(--text-primary);
+    margin: 0 0 16px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+  }
 }
 
-#dnd:hover {
-  background: rgba(231, 239, 251, 1);
+.node-items {
+  display: grid;
+  gap: 12px;
 }
 
-#msg {
-  border: none;
-  border-radius: 3px;
-  background: rgba(231, 239, 251, 0.8);
-  color: rgba(63, 133, 255);
-  font-size: 18px;
-  float: left;
-  user-select: none;
-  margin: 10px 20px;
+.node-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: var(--bg-color);
+  border-radius: 6px;
+  transition: background 0.2s;
+
+  &:hover {
+    background: var(--hover-bg);
+  }
+
+  .node-title {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 16px;
+  }
 }
 
-.red {
-  color: red;
-}
-
-.btntop {
-  border: none;
-  border-radius: 3px;
-  background: rgba(231, 239, 251, 0.8);
-  color: rgba(63, 133, 255);
-  cursor: pointer;
-  font-size: 18px;
-  float: left;
-  margin: 10px 20px;
-}
+// 移除所有未使用的样式
 </style>

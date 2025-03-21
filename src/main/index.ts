@@ -1,8 +1,8 @@
 /*
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
- * @LastEditors: Linne Rella 3223961933@qq.com
- * @LastEditTime: 2025-03-20 21:12:10
+ * @LastEditors: chengp 3223961933@qq.com
+ * @LastEditTime: 2025-03-21 14:52:37
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -175,7 +175,7 @@ function createWindow(): void {
         function addTorrent(magURL): void {
           client.add(
             magURL,
-            { path: 'H:/Downloads', announce: trackerlist, paused: false },
+            { path: 'E:/Downloads', announce: trackerlist, paused: false },
             (torrent) => {
               torrent.pause()
               torrent.initURL = magURL
@@ -210,6 +210,40 @@ function createWindow(): void {
           )
         }
 
+        function resumeTorrent(initURL, filesPath): void {
+          console.log('resume', initURL, filesPath)
+          const torrent = client.torrents.find((t) => t.initURL === initURL)
+          if (!torrent) {
+            // 重新添加中断的任务
+            client.add(
+              initURL,
+              {
+                path: 'E:/Downloads',
+                announce: trackerlist
+              },
+              (newTorrent) => {
+                newTorrent.initURL = initURL
+                newTorrent.pause()
+                newTorrent.deselect(0, newTorrent.pieces.length - 1, false)
+                newTorrent.files.forEach((file) => {
+                  if (filesPath.includes(file.path)) {
+                    file.select()
+                  }
+                })
+                newTorrent.resume()
+              }
+            )
+          } else {
+            // 如果已存在但暂停，直接恢复
+            torrent.resume()
+            torrent.paused = false
+          }
+        }
+
+        ipcMain.on('resumeTorrent', (event, url: string, filesPath: string[]) => {
+          console.log('resumeTorrent', url)
+          resumeTorrent(url, filesPath)
+        })
         ipcMain.on('addTorrent', (event, url: string) => {
           console.log('addTorrent', url)
           addTorrent(url)
@@ -227,7 +261,7 @@ function createWindow(): void {
                   console.log('Torrent removed:', initURL)
                 }
               })
-            }else{
+            } else {
               console.log('Torrent not found:', initURL)
             }
           }

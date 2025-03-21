@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-12 14:03:34
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-20 17:07:37
+ * @LastEditTime: 2025-03-21 16:46:52
  * @FilePath: \torrent\src\renderer\src\components\iniInfo.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -39,10 +39,14 @@
               :to="`/detail?key=${item['关键字']}`"
               class="item-link"
             >
-              <div 
-                class="item-image" 
-                :style="{ backgroundImage: 'url(' + item['图床'] + ')' }"
-              ></div>
+              <div class="item-image-wrapper">
+                <div 
+                  class="item-image" 
+                  :style="item['图床'] ? { backgroundImage: 'url(' + item['图床'] + ')' } : {}"
+                >
+                  <span v-if="!item['图床']" class="image-placeholder">暂无图片</span>
+                </div>
+              </div>
               <div class="item-name">{{ item.Name }}</div>
             </router-link>
           </div>
@@ -131,122 +135,151 @@ function change(x): void {
 
 
 <style scoped lang="less">
+// Variables for consistent theming
+@dark-bg: #1a1a1a;
+@text-color: #e0e0e0;
+@accent-color: #4a90e2;
+@card-bg: rgba(40, 40, 40, 0.85);
+
 .ini-info {
   min-height: 100vh;
-  color: #fff;
   background-size: cover;
   background-position: center;
-  animation: subtle-move 10s ease infinite alternate;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  
-  .overlay {
-    // background: rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(6px);
-    border-radius: 8px;
-    padding: 20px;
-    width: 90%;
-    max-width: 1200px;
-  }
+  background-color: @dark-bg;
+}
+
+.overlay {
+  background: @card-bg;
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 1200px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .controls {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 20px;
-  gap: 20px;
-  font-size: 20px;
+  gap: 24px;
+  margin-bottom: 24px;
+  color: @text-color;
   
   .change {
-    background: transparent;
+    background: none;
     border: none;
-    outline: none;
-    color: #fff;
+    color: @text-color;
     cursor: pointer;
-    transition: transform 0.3s ease;
+    padding: 8px;
+    transition: all 0.3s ease;
     
     &:hover,
     &.enabled {
-      transform: scale(1.1);
+      color: @accent-color;
+      transform: translateY(-2px);
     }
   }
   
   .quarter {
-    font-weight: bold;
+    font-size: 18px;
+    font-weight: 500;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
   }
 }
 
 .schedule {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
   
   .day-schedule {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    
     .day-label {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
+      margin-bottom: 12px;
       
       span {
-        font-size: 24px;
-        width: 120px;
+        font-size: 20px;
+        color: @text-color;
+        width: 100px;
+        font-weight: 500;
       }
       
       hr {
         flex: 1;
         border: none;
-        border-top: 1px solid #fff;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.2);
       }
     }
     
     .items {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 16px;
       
       .item-link {
         display: flex;
         flex-direction: column;
-        align-items: center;
         text-decoration: none;
-        color: inherit;
-        width: 200px;
+        color: @text-color;
+        transition: transform 0.2s ease;
         
-        .item-image {
-          width: 200px;
-          height: 240px;
-          background-size: cover;
-          background-position: center;
-          border-radius: 4px;
-          transition: transform 0.3s ease;
+        &:hover {
+          transform: translateY(-4px);
+        }
+        
+        .item-image-wrapper {
+          position: relative;
+          width: 100%;
+          height: 220px;
+          border-radius: 8px;
+          overflow: hidden;
+          background: #333;
           
-          &:hover {
-            transform: scale(1.05);
+          .item-image {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: opacity 0.3s ease;
+          }
+          
+          .image-placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #888;
+            font-size: 14px;
+            text-align: center;
           }
         }
         
         .item-name {
           margin-top: 8px;
+          font-size: 14px;
           text-align: center;
+          line-height: 1.4;
+          padding: 4px;
+          word-break: break-word;
         }
       }
     }
   }
 }
 
+// Remove animation if not needed or adjust timing
 @keyframes subtle-move {
-  0% {
-    background-position: center top;
-  }
-  100% {
-    background-position: center bottom;
-  }
+  0% { background-position: center top; }
+  100% { background-position: center bottom; }
 }
 </style>
