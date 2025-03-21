@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-21 14:52:37
+ * @LastEditTime: 2025-03-21 17:05:48
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -51,7 +51,7 @@ function writeDownloadStore(data: object): void {
   fs.writeFileSync(filePath, fileContent, 'utf-8')
 }
 
-ipcMain.handle('setDownloadStore', async (event, data) => {
+ipcMain.handle('setDownloadStore', async (_event, data) => {
   writeDownloadStore(data)
   console.log('DownloadStore updated')
 })
@@ -91,7 +91,7 @@ function createWindow(): void {
     const WebTorrent = (await import('webtorrent')).default
 
     async function createWebT(): Promise<void> {
-      await new Promise((resolve, reject) => {
+      await new Promise((_resolve, reject) => {
         // 在 Node 环境下运行的 WebTorrent 客户端会使用 TCP/UDP 协议进行数据交换
         const client = new WebTorrent()
         function storeTorrents(): void {
@@ -240,16 +240,16 @@ function createWindow(): void {
           }
         }
 
-        ipcMain.on('resumeTorrent', (event, url: string, filesPath: string[]) => {
+        ipcMain.on('resumeTorrent', (_event, url: string, filesPath: string[]) => {
           console.log('resumeTorrent', url)
           resumeTorrent(url, filesPath)
         })
-        ipcMain.on('addTorrent', (event, url: string) => {
+        ipcMain.on('addTorrent', (_event, url: string) => {
           console.log('addTorrent', url)
           addTorrent(url)
         })
 
-        ipcMain.on('removeTorrent', (event, initURL: string, removeFile: boolean = false) => {
+        ipcMain.on('removeTorrent', (_event, initURL: string, removeFile: boolean = false) => {
           console.log('removeTorrent')
           if (client) {
             const targetTorrent = client.torrents.find((t) => t.initURL === initURL)
@@ -267,7 +267,7 @@ function createWindow(): void {
           }
         })
 
-        ipcMain.on('fileSelect', (event, torrentLink: string, filesPath: string[]) => {
+        ipcMain.on('fileSelect', (_event, torrentLink: string, filesPath: string[]) => {
           if (!client) return
           const targetTorrent = client.torrents.find((t) => t.initURL === torrentLink)
           if (targetTorrent) {
