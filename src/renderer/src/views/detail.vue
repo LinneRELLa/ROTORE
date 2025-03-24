@@ -38,6 +38,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { ElNotification } from 'element-plus'
 // import { useStore } from 'vuex'
 import { getInfo } from '../http'
 import { useRoute } from 'vue-router'
@@ -75,7 +76,11 @@ const route = useRoute()
 
 async function copy(k: string, u: string, d: string): Promise<void> {
   await navigator.clipboard.writeText(u)
-  window.alert(k + d + '复制成功')
+  ElNotification({
+      title: 'success',
+      message: '链接复制成功',
+      type: 'success'
+    })
 }
 
 // function openFile():void {
