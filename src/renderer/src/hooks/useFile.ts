@@ -1,4 +1,9 @@
-export function useFile(): { readJSON: (path: string) => object } {
+import { useConfigStore } from '@renderer/store/config'
+import type { IPathConfig } from '@Type/index'
+export function useFile(): {
+  readJSON: (path: string) => object
+  ConfigStore: { PathConfig: IPathConfig }
+} {
   function readJSON(path: string): object {
     try {
       const data = window.nodeAPI.fs.readFileSync(path, 'utf8')
@@ -8,5 +13,7 @@ export function useFile(): { readJSON: (path: string) => object } {
       return { message: error }
     }
   }
-  return { readJSON }
+
+  const ConfigStore = useConfigStore()
+  return { readJSON, ConfigStore }
 }

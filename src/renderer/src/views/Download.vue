@@ -2,7 +2,7 @@
  * @Author: Linne Rella 3223961933@qq.com
  * @Date: 2025-03-20 18:08:34
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-21 15:41:00
+ * @LastEditTime: 2025-03-24 13:54:29
  * @FilePath: \electronTorrent\src\renderer\src\views\Download.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -58,8 +58,8 @@
             :key="x.infoHash"
             class="task-card"
             shadow="hover"
-            @click="selectTask(x)"
             :class="{ active: selectedTask?.infoHash === x.infoHash }"
+            @click="selectTask(x)"
           >
             <div class="task-content">
               <!-- 任务信息 -->
@@ -78,7 +78,8 @@
                   </div>
                   <div class="stat-item">
                     <el-icon><DataLine /></el-icon>
-                    {{ (((x.progress || 0) as number) * 100).toFixed(4) }}%
+                    {{ (((x.selectedSize / x.selectedTotal || 0) as number) * 100)?.toFixed(2) }}
+                    %
                   </div>
                   <div class="stat-item">
                     <el-icon><Download /></el-icon>
@@ -123,7 +124,7 @@
 
                 <el-popover
                   placement="top"
-                  :width="200"
+                  :width="'auto'"
                   trigger="click"
                   v-model:visible="popoverVisible[x.infoHash]"
                 >
@@ -131,6 +132,7 @@
                     <el-button type="danger" size="small" plain @click.stop> 删除任务 </el-button>
                   </template>
                   <p class="delete-confirm">确认删除该任务？</p>
+                  <el-checkbox v-model="FileDelte" label="同时删除文件" class="FileDelte" />
                   <div class="delete-actions">
                     <el-button size="small" @click="popoverVisible[x.infoHash] = false"
                       >取消</el-button
@@ -156,7 +158,7 @@
           <!-- 文件列表 -->
           <div class="file-list">
             <div v-for="file in selectedTask.files" :key="file.path" class="file-item">
-              <div class="file-name">{{ file.path }}</div>
+              <div class="file-name file-name-side" :title="file.path">{{ file.name }}</div>
               <div class="file-size">{{ formatSize(file.size) }}</div>
             </div>
           </div>
@@ -202,7 +204,7 @@
           >
             <el-checkbox v-model="file.initselected" class="file-checkbox" @click.stop />
             <div class="file-info">
-              <div class="file-name">{{ file.path }}</div>
+              <div class="file-name">{{ file.name }}</div>
               <div class="file-size">{{ formatSize(file.size) }}</div>
             </div>
           </div>
@@ -238,9 +240,9 @@ import { ref, watch, computed, onBeforeUnmount, nextTick } from 'vue'
 import { useTorrent } from '@renderer/hooks/useTorrent'
 import * as echarts from 'echarts'
 import { ElNotification } from 'element-plus'
-
+const { join } = window.nodeAPI.path
 const { ClientStore } = useTorrent()
-
+const FileDelte = ref<boolean>(false)
 let magUrl = ref<string>('')
 let selectPop = ref<boolean>(false)
 
@@ -249,6 +251,19 @@ const popoverVisible = ref<{ [key: string]: boolean }>({})
 // const deleteFileOptions = ref<{ [key: string]: boolean }>({})
 
 function confirmDelete(torrent: ITorrentRender): void {
+  if (FileDelte.value) {
+    torrent.files.forEach((file) => {
+      const filepath = join(torrent.path as string, file.path)
+      if (window.nodeAPI.fs.existsSync(filepath)) {
+        try {
+          window.nodeAPI.fs.unlinkSync(filepath)
+          console.log(`Deleted file: ${filepath}`)
+        } catch (err) {
+          console.error(`Failed to delete ${filepath}:`, err)
+        }
+      }
+    })
+  }
   Remove(torrent, false)
   popoverVisible.value[torrent.infoHash] = false
 }
@@ -571,6 +586,9 @@ onBeforeUnmount(() => {
 .task-list {
   display: grid;
   gap: 1rem;
+  .active {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
 }
 
 .task-card {
@@ -640,11 +658,11 @@ onBeforeUnmount(() => {
     transition: background-color 0.2s;
 
     &:hover {
-      background-color: #f5f7fa;
+      background-color: #f5f7fa21;
     }
 
     &.selected {
-      background-color: #ecf5ff;
+      background-color: #ecf5ff2f;
     }
   }
 
@@ -656,7 +674,7 @@ onBeforeUnmount(() => {
     flex-grow: 1;
 
     .file-name {
-      color: #303133;
+      color: white;
       margin-bottom: 0.2rem;
     }
 
@@ -750,7 +768,7 @@ onBeforeUnmount(() => {
     background: var(--bg-color);
     border-radius: 6px;
 
-    .file-name {
+    .file-name-side {
       flex: 1;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -806,13 +824,15 @@ onBeforeUnmount(() => {
 }
 
 .delete-confirm {
-  margin: 1rem 0;
-  text-align: center;
+  text-align: left;
+}
+.FileDelte {
+  margin: 0.24rem 0.12rem;
 }
 
 .delete-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 0.8rem;
 }
 </style>

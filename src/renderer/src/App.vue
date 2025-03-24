@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-11 13:33:14
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-20 16:36:31
+ * @LastEditTime: 2025-03-24 11:51:03
  * @FilePath: \torrent\src\renderer\src\App.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -18,11 +18,34 @@
 import { ref } from 'vue'
 import { useTorrent } from '@renderer/hooks/useTorrent'
 const { watchTorrents } = useTorrent()
+import { useFile } from '@renderer/hooks/useFile'
+const { readJSON, ConfigStore } = useFile()
+import type { IPathConfig } from '@Type/index'
+
+let PathConfig: IPathConfig = {
+  base: '',
+  proxy: '',
+  source: '',
+  downloadPath: ''
+}
+
+const ipcRenderer = window.electron.ipcRenderer
+async function readConfig(): Promise<void> {
+  await new Promise((resolve) => {
+    ipcRenderer.invoke('getPath').then((meassage) => {
+      PathConfig = readJSON(meassage) as IPathConfig
+      ConfigStore.PathConfig = PathConfig
+      console.log(ConfigStore, 'ConfigStore')
+      resolve(null)
+    })
+  })
+}
+
+readConfig()
+
 watchTorrents()
 
 let mes = ref<string>('')
-// @ts-ignore (define in preload.dts)
-const ipcRenderer = window.electron.ipcRenderer
 
 // const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
 function minimize(): void {
@@ -43,7 +66,8 @@ document.addEventListener('keydown', (e) => {
 
 const navRoutes = [
   { path: '/home', name: '首页', icon: 'House' },
-  { path: '/download', name: '下载', icon: 'Download' }
+  { path: '/download', name: '下载', icon: 'Download' },
+  { path: '/option', name: '设置', icon: 'Setting' }
   // 其他路由...
 ]
 </script>
@@ -132,7 +156,7 @@ html {
   flex-direction: column;
   background: var(--bg-color);
   color: var(--text-color);
-  width:100vw;
+  width: 100vw;
 }
 
 .app-header {
@@ -251,6 +275,20 @@ html {
   padding: 24px;
   overflow: auto;
   position: relative;
+  &::-webkit-scrollbar-track-piece {
+    background: transparent;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #99999957;
+    border-radius: 4px;
+  }
 }
 
 // 过渡动画

@@ -8,7 +8,8 @@ export const useConfigStore = defineStore('config', {
       PathConfig: {
         base: '',
         proxy: '',
-        source: ''
+        source: '',
+        downloadPath:'',
       }
     }
   }

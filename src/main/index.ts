@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-21 17:05:48
+ * @LastEditTime: 2025-03-24 14:20:34
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -25,7 +25,8 @@
 import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
+import icon from '../../resources/x1.ico?asset'
+
 const publicPath = app.isPackaged ? process.resourcesPath : app.getAppPath()
 import * as fs from 'fs'
 
@@ -67,12 +68,13 @@ import trackerlist from './trackerlist.json'
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
+    width: 1200,
     height: 670,
     show: false,
     frame: false,
     autoHideMenuBar: false,
-    ...(process.platform === 'linux' ? { icon } : {}),
+    // ...(process.platform === 'linux' ? { icon } : {}),
+    icon: process.platform === 'darwin' ? {} : icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -173,9 +175,17 @@ function createWindow(): void {
         })
 
         function addTorrent(magURL): void {
+          let DownloadPath = join(publicPath, '../Downloads')
+          try {
+            DownloadPath = JSON.parse(
+              fs.readFileSync(join(publicPath, 'config/config.json'), 'utf-8')
+            ).downloadPath
+          } catch (err) {
+            console.log('获取下载路径失败', err)
+          }
           client.add(
             magURL,
-            { path: 'E:/Downloads', announce: trackerlist, paused: false },
+            { path: DownloadPath, announce: trackerlist, paused: false },
             (torrent) => {
               torrent.pause()
               torrent.initURL = magURL

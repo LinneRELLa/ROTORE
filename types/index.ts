@@ -63,3 +63,11 @@ export class ITorrent implements ITorrentRender {
 export interface IWebTorrentRender {
   torrents: ITorrentRender[]
 }
+
+
+export interface IPathConfig {
+  base: string
+  proxy: string
+  source: string
+  downloadPath: string
+}

@@ -16,18 +16,14 @@
  */
 import axios from 'axios'
 import { useFile } from '@renderer/hooks/useFile'
-
-import { useConfigStore } from '@renderer/store/config'
+import type { IPathConfig } from '@Type/index'
 // import path from 'path'
-interface IPathConfig {
-  base: string
-  proxy: string
-  source: string
-}
+
 let PathConfig: IPathConfig = {
   base: '',
   proxy: '',
-  source: ''
+  source: '',
+  downloadPath: ''
 }
 
 const { readJSON } = useFile()
@@ -37,8 +33,6 @@ await new Promise((resolve) => {
   ipcRenderer.invoke('getPath').then((meassage) => {
     PathConfig = readJSON(meassage) as IPathConfig
     console.log(PathConfig)
-    const configStore = useConfigStore()
-    configStore.PathConfig = PathConfig
     resolve(null)
   })
 })

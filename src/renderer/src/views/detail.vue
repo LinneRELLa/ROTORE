@@ -47,7 +47,7 @@ type pagNode = { title: string; des?: string; b: string }
 // const fileName = ref<string|undefined>(undefined)
 // const path = ref<string|undefined>(undefined)
 const page = ref(1)
-type Nodes = { [key in string]: pagNode[] } | object
+type Nodes = { [key in string]: pagNode[] }
 const nodes = ref<Nodes>({ ROREL: [{ title: '正在加载...', b: '' }] })
 const response = ref('')
 // const last = ref('暂无')
@@ -119,6 +119,7 @@ async function copy(k: string, u: string, d: string): Promise<void> {
 
 function getpage(k: string, p: number): void {
   nodes.value = { ROREL: [{ title: '正在加载', b: '' }] }
+  //@ts-ignore noneed
   getInfo(k, p).then((res: { data: string }) => {
     response.value = res.data
     parse()
@@ -141,8 +142,10 @@ function parse(): void {
     b = link.replace(/acg.rip/, 'tv.rellal.com:9099/acg')
     pag.push({ title, des, b })
   }
+
   function nodetotree(array: pagNode[]): Nodes {
     if (!array.length) {
+      // @ts-ignore will be parser
       return []
     }
     const result = array.reduce((acc: pagNode | object, cur: pagNode) => {
@@ -155,6 +158,7 @@ function parse(): void {
       }
       return acc
     }, {})
+    // @ts-ignore object in Nodes
     return result
   }
   nodes.value = nodetotree(pag)
@@ -167,6 +171,7 @@ function parse(): void {
 // 生命周期挂载
 onMounted(() => {
   getpage(String(route.query.key), page.value)
+
   //   window.$electron.ipcRenderer.invoke('getstore', route.query.key).then((m: any) => {
   //     console.log(m, 'm')
   //     last.value = m
