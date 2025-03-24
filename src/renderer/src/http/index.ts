@@ -114,7 +114,7 @@ const back = (data): Promise<object> => {
   })
 }
 
-const getInfo = (key: string, page: number): Promise<string> => {
+const getInfo = (key: string, page: number): Promise<{ data: string }> => {
   //   if (!proxy) {
 
   //   } else {

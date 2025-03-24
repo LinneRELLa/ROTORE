@@ -2,20 +2,13 @@
   <div class="detail-container">
     <div class="header">
       <h2 class="title">{{ route.query.key }}</h2>
-      
+
       <div class="pagination">
-        <el-button 
-          circle 
-          :disabled="page === 1"
-          @click="getpage(String(route.query.key), --page)"
-        >
+        <el-button circle :disabled="page === 1" @click="getpage(String(route.query.key), --page)">
           <el-icon><ArrowLeft /></el-icon>
         </el-button>
         <span class="current-page">第{{ page }}页</span>
-        <el-button 
-          circle 
-          @click="getpage(String(route.query.key), ++page)"
-        >
+        <el-button circle @click="getpage(String(route.query.key), ++page)">
           <el-icon><ArrowRight /></el-icon>
         </el-button>
       </div>
@@ -25,16 +18,12 @@
       <div v-for="(x, k) of nodes" :key="k" class="node-group">
         <h3 class="group-title">{{ k }}</h3>
         <div class="node-items">
-          <div 
-            v-for="(i, ind) in x" 
-            :key="ind" 
-            class="node-item"
-          >
+          <div v-for="(i, ind) in x" :key="ind" class="node-item">
             <span class="node-title">{{ i.title }}</span>
-            <el-button 
+            <el-button
               v-if="i.title !== '暂无结果' && i.title !== '正在加载'"
-              type="primary" 
-              circle 
+              type="primary"
+              circle
               size="small"
               @click="copy(String(route.query.key), i.b, i.title)"
             >
@@ -48,9 +37,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 // import { useStore } from 'vuex'
-import { getInfo, back } from '../http'
+import { getInfo } from '../http'
 import { useRoute } from 'vue-router'
 
 type pagNode = { title: string; des?: string; b: string }
@@ -58,7 +47,7 @@ type pagNode = { title: string; des?: string; b: string }
 // const fileName = ref<string|undefined>(undefined)
 // const path = ref<string|undefined>(undefined)
 const page = ref(1)
-type Nodes = { [key in string]: pagNode[] }
+type Nodes = { [key in string]: pagNode[] } | object
 const nodes = ref<Nodes>({ ROREL: [{ title: '正在加载...', b: '' }] })
 const response = ref('')
 // const last = ref('暂无')
@@ -130,7 +119,7 @@ async function copy(k: string, u: string, d: string): Promise<void> {
 
 function getpage(k: string, p: number): void {
   nodes.value = { ROREL: [{ title: '正在加载', b: '' }] }
-  getInfo(k, p).then((res: any) => {
+  getInfo(k, p).then((res: { data: string }) => {
     response.value = res.data
     parse()
   })
@@ -152,7 +141,7 @@ function parse(): void {
     b = link.replace(/acg.rip/, 'tv.rellal.com:9099/acg')
     pag.push({ title, des, b })
   }
-  function nodetotree(array: pagNode[]): any {
+  function nodetotree(array: pagNode[]): Nodes {
     if (!array.length) {
       return []
     }
@@ -178,7 +167,6 @@ function parse(): void {
 // 生命周期挂载
 onMounted(() => {
   getpage(String(route.query.key), page.value)
-  // @ts-ignore
   //   window.$electron.ipcRenderer.invoke('getstore', route.query.key).then((m: any) => {
   //     console.log(m, 'm')
   //     last.value = m

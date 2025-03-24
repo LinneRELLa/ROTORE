@@ -23,8 +23,8 @@
   "build": {
     "extraResources": [
       {
-        "from": "config/config.json",
-        "to": "config/config.json",
+        "from": "config/",
+        "to": "config/",
         "filter": [
           "**/*"
         ]

@@ -1,0 +1,3 @@
+运行和打包需要python环境
+可能需要安装VS BUILD TOOLS
+作者node版本22.14.0
