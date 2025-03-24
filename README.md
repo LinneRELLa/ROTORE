@@ -9,7 +9,7 @@
 
 # ROTORE
 
-![image text](https://github.com/LinneRELLa/ElectronTorrent/blob/main/resources/icon.png =600x600)
+![image text](https://github.com/LinneRELLa/ElectronTorrent/blob/main/resources/icon.png)
 
 基于 Electron + VUE3 + WEBTORRENT 的磁力下载工具（附带追番功能）
 
