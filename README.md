@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-24 14:52:47
+ * @LastEditTime: 2025-03-24 14:55:21
  * @FilePath: \ElectronTorrent\README.md
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -10,7 +10,7 @@
 # ROTORE
 
 <div align=center>
-	<img src="https://github.com/LinneRELLa/ElectronTorrent/blob/main/resources/icon.png" style="width:256px;height:256px;"/>
+	<img src="https://github.com/LinneRELLa/ElectronTorrent/blob/main/resources/Xlogo2.png" style="width:256px;height:256px;"/>
 </div>
 
 基于 Electron + VUE3 + WEBTORRENT 的磁力下载工具（附带追番功能）
