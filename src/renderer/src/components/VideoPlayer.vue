@@ -53,13 +53,13 @@ const checkFormatSupport = (): void => {
 //   }
 // }
 
-const openSystemPlayer = async (): void => {
+const openSystemPlayer = async (): Promise<void> => {
   try {
-    const result = await window.electron.ipcRenderer.invoke('open-with-player', props.videoUrl)
+    window.nodeAPI.shell.openPath(props.videoUrl)
 
     ElNotification.success({
       title: '播放成功',
-      message: `正在使用 ${result.player} 播放`,
+      message: `正在使用系统内置播放器播放`,
       duration: 2000
     })
   } catch (err) {
