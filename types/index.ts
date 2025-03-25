@@ -11,6 +11,7 @@ export interface IFileRender {
   offset: number
   size: number
   initselected: boolean
+  streamURL: string
 }
 
 export interface ITorrentRender {
@@ -48,22 +49,21 @@ export class ITorrent implements ITorrentRender {
     public cleared: boolean = false,
     public error: string = ''
   ) {
-    this.name = name 
-    this.magnetURI = magnetURI 
+    this.name = name
+    this.magnetURI = magnetURI
     this.infoHash = infoHash
-    this.files = files 
-    this.initURL = initURL 
-    this.fileSelected = fileSelected 
-    this.selectedSize = selectedSize 
-    this.selectedTotal = selectedTotal 
-    this.cleared = cleared 
-    this.error = error 
+    this.files = files
+    this.initURL = initURL
+    this.fileSelected = fileSelected
+    this.selectedSize = selectedSize
+    this.selectedTotal = selectedTotal
+    this.cleared = cleared
+    this.error = error
   }
 }
 export interface IWebTorrentRender {
   torrents: ITorrentRender[]
 }
-
 
 export interface IPathConfig {
   base: string

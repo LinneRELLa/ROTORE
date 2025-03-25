@@ -2,7 +2,7 @@
  * @Author: Linne Rella 3223961933@qq.com
  * @Date: 2025-03-20 18:08:34
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-24 13:54:29
+ * @LastEditTime: 2025-03-25 10:19:26
  * @FilePath: \electronTorrent\src\renderer\src\views\Download.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -156,10 +156,22 @@
           </div>
 
           <!-- 文件列表 -->
-          <div class="file-list">
+          <!-- <div class="file-list">
             <div v-for="file in selectedTask.files" :key="file.path" class="file-item">
               <div class="file-name file-name-side" :title="file.path">{{ file.name }}</div>
               <div class="file-size">{{ formatSize(file.size) }}</div>
+            </div>
+          </div> -->
+          <div v-for="file in selectedTask.files" :key="file.path" class="file-item">
+            <div class="file-info">
+              <div class="file-name file-name-side" :title="file.path">{{ file.name }}</div>
+              <div class="file-actions">
+                <el-button v-if="isVideoFile(file.name)" size="small" @click.stop="playVideo(file)">
+                  <el-icon><VideoPlay /></el-icon>
+                  播放
+                </el-button>
+                <div class="file-size">{{ formatSize(file.size) }}</div>
+              </div>
             </div>
           </div>
 
@@ -231,6 +243,15 @@
         正在加载文件列表...
       </div>
     </el-dialog>
+
+    <!-- 视频弹窗 -->
+    <el-dialog v-model="videoVisible" class="video-dialog" :show-close="false" fullscreen>
+      <VideoPlayer
+        :video-url="currentVideoUrl"
+        :file-name="currentFileName"
+        @close="videoVisible = false"
+      />
+    </el-dialog>
   </div>
 </template>
 <script lang="ts" setup>
@@ -294,6 +315,7 @@ function sendFileSelect(torrentLink: string, files: string[]): void {
   }
   selectPop.value = false
   ClientStore.currentTorrent = new ITorrent()
+  window.electron.ipcRenderer.send('writeTorrent')
 }
 
 // ;(async function (): Promise<void> {
@@ -543,8 +565,75 @@ onBeforeUnmount(() => {
   stopUpdateInterval()
   if (chartInstance) chartInstance.dispose()
 })
+
+//在线播放相关
+// 在setup部分添加以下内容
+import VideoPlayer from '@renderer/components/VideoPlayer.vue'
+
+const videoVisible = ref(false)
+const currentVideoUrl = ref('')
+const currentFileName = ref('')
+
+// 视频格式检测
+const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'webm', 'flv']
+const isVideoFile = (fileName: string): boolean => {
+  return videoExtensions.some((ext) => fileName.toLowerCase().endsWith(`.${ext}`))
+}
+
+// 播放视频
+const playVideo = async (file): Promise<void> => {
+  try {
+    // 获取视频流URL
+
+    if (!selectedTask?.value?.cleared) {
+      const torrent = ClientStore.clientTorrentsStore.find(
+        (t) => t.infoHash === selectedTask.value?.infoHash
+      )
+      const videoFile = torrent?.files.find((f) => f.path === file.path)
+      currentVideoUrl.value = videoFile?.streamURL || ''
+      currentFileName.value = file.name
+      videoVisible.value = true
+    } else {
+      currentVideoUrl.value = join(selectedTask.value.path, file.path)
+      currentFileName.value = file.name
+      videoVisible.value = true
+    }
+  } catch (err) {
+    ElNotification.error('视频播放失败: ' + err)
+  }
+}
 </script>
 <style lang="less" scoped>
+//视频弹窗
+:deep(.video-dialog) {
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  .el-dialog__header {
+    display: none;
+  }
+
+  .el-dialog__body {
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+}
+
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .el-button {
+    padding: 4px 8px;
+  }
+}
+
 .download-container {
   // max-width: 1200px;
   margin: 0 auto;

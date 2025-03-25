@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-24 14:20:34
+ * @LastEditTime: 2025-03-25 10:01:19
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -74,10 +74,12 @@ function createWindow(): void {
     frame: false,
     autoHideMenuBar: false,
     // ...(process.platform === 'linux' ? { icon } : {}),
-    icon: process.platform === 'darwin' ? {} : icon,
+    icon: process.platform === 'darwin' ? undefined : icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      webSecurity: false, // 禁用同源策略
+      plugins: true
     }
   })
 
@@ -96,6 +98,12 @@ function createWindow(): void {
       await new Promise((_resolve, reject) => {
         // 在 Node 环境下运行的 WebTorrent 客户端会使用 TCP/UDP 协议进行数据交换
         const client = new WebTorrent()
+        const instance = client.createServer({
+          ws: true, // 启用WebSocket
+          cors: true
+        })
+        instance.server.listen(7920)
+
         function storeTorrents(): void {
           mainWindow.webContents.send('request-downloadstore')
           ipcMain.once('exportDownloadStoreResponse', (_event, data) => {
@@ -103,6 +111,7 @@ function createWindow(): void {
             writeDownloadStore(data)
           })
         }
+
         function updateclients(): void {
           const tosend = client.torrents.map((x) => {
             return {
@@ -144,7 +153,8 @@ function createWindow(): void {
                   _startPiece,
                   _endPiece,
                   offset,
-                  size
+                  size,
+                  streamURL: `http://localhost:${instance.server.address().port}/webtorrent/${x.infoHash}/${y.path}`
                 }
               })
             }
@@ -191,6 +201,9 @@ function createWindow(): void {
               torrent.initURL = magURL
               console.log('add done', torrent)
               torrent.deselect(0, torrent.pieces.length - 1, false)
+
+              // const url = torrent.files[0].streamURL
+              // console.log(url)
               // client.torrents.map((x) => {
               //   x.files.map((y) => {
               //     // if (index == 0) {
