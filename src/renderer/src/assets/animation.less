@@ -1,0 +1,27 @@
+.loading-indicator {
+    .dot-flashing {
+      position: relative;
+      width: 10px;
+      height: 10px;
+      border-radius: 5px;
+      background-color: @player-primary;
+      animation: dot-flashing 1s infinite linear alternate;
+      
+      &::before, &::after {
+        content: '';
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-radius: 5px;
+        background-color: @player-primary;
+        animation: dot-flashing 1s infinite linear alternate;
+      }
+      &::before { left: -15px; animation-delay: 0s; }
+      &::after { left: 15px; animation-delay: 0.5s; }
+    }
+  }
+  
+  @keyframes dot-flashing {
+    0% { opacity: 0.2; transform: translateY(0); }
+    100% { opacity: 1; transform: translateY(-10px); }
+  }
