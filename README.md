@@ -43,7 +43,7 @@
 ## 计划中的功能
 
 - <span style="text-decoration-line: line-through;">在线播放</span> 已实现
-- 
+  
 - 拖拽种子文件以下载
 
 - 侧边栏功能自定义
