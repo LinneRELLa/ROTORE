@@ -1,8 +1,8 @@
 <!--
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-24 11:25:35
- * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-26 16:44:40
+ * @LastEditors: Linne Rella 3223961933@qq.com
+ * @LastEditTime: 2025-03-26 20:09:13
  * @FilePath: \ElectronTorrent\src\renderer\src\views\option.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -15,12 +15,12 @@
       </div>
     </div>
 
-    <div class="option-line">
+    <!-- <div class="option-line">
       <div class="app-content-body-main-content-content-item-title">外部播放器地址</div>
       <div class="app-content-body-main-content-content-item-content">
         <el-input v-model="ConfigStore.PathConfig.playerPath" placeholder="Please input" />
       </div>
-    </div>
+    </div> -->
 
     <el-button @click="save" class="savebutton">保存</el-button>
   </div>

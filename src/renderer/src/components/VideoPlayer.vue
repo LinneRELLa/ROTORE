@@ -45,7 +45,8 @@ const checkFormatSupport = (): void => {
     avi: 'video/x-msvideo'
   }[ext || '']
 
-  supportedFormat.value = mimeType ? videoEl?.value?.canPlayType(mimeType) !== '' : false
+  // supportedFormat.value = mimeType ? videoEl?.value?.canPlayType(mimeType) !== '' : false
+   supportedFormat.value = true
 }
 
 // 打开系统播放器

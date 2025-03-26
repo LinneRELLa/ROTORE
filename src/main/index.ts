@@ -1,8 +1,8 @@
 /*
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
- * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-26 17:39:18
+ * @LastEditors: Linne Rella 3223961933@qq.com
+ * @LastEditTime: 2025-03-26 19:59:10
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -216,10 +216,10 @@ function createWindow(): void {
               // torrent.resume()
 
               torrent.on('download', (bytes) => {
-                console.log('just downloaded: ' + bytes)
-                console.log('total downloaded: ' + torrent.downloaded)
-                console.log('download speed: ' + torrent.downloadSpeed)
-                console.log('progress: ' + torrent.progress)
+                // console.log('just downloaded: ' + bytes)
+                // console.log('total downloaded: ' + torrent.downloaded)
+                // console.log('download speed: ' + torrent.downloadSpeed)
+                // console.log('progress: ' + torrent.progress)
               })
 
               // torrent.on('metadata', () => {
@@ -410,10 +410,10 @@ ipcMain.handle('open-with-external-player', async (_event, videoPath, playerPath
   if (!playerPath) {
     throw new Error('未设置外部播放器路径')
   }
-  const decodedPlayerPath = decodeURIComponent(playerPath).replace('\\','/')
-  const decodedVideoPath = decodeURIComponent(videoPath)
+  const decodedPlayerPath = decodeURIComponent(playerPath)
+  const decodedVideoPath = join(decodeURIComponent(videoPath))
 
-  console.log(decodeURIComponent(videoPath), 'props.videoUrl')
+  console.log(decodedVideoPath, 'props.videoUrl')
   return new Promise((resolve, reject) => {
     execFile(decodedPlayerPath, [decodedVideoPath], (error) => {
       if (error) {
