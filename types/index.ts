@@ -70,4 +70,5 @@ export interface IPathConfig {
   proxy: string
   source: string
   downloadPath: string
+  playerPath: string
 }

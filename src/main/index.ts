@@ -1,8 +1,8 @@
 /*
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
- * @LastEditors: Linne Rella 3223961933@qq.com
- * @LastEditTime: 2025-03-25 18:52:09
+ * @LastEditors: chengp 3223961933@qq.com
+ * @LastEditTime: 2025-03-26 17:14:26
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -26,8 +26,7 @@ import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/x1.ico?asset'
-import { exec, execSync } from 'child_process'
-import { promisify } from 'util'
+import { execFile } from 'child_process'
 
 const publicPath = app.isPackaged ? process.resourcesPath : app.getAppPath()
 import * as fs from 'fs'
@@ -407,85 +406,21 @@ app.on('window-all-closed', () => {
 })
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
-
-const execAsync = promisify(exec)
-
-// 播放器检测逻辑
-const detectPlayers = async () => {
-  const players = {
-    potplayer: {
-      win: [
-        'reg query "HKLM\\Software\\DAUM\\PotPlayer" /v InstallPath',
-        'reg query "HKLM\\Software\\WOW6432Node\\DAUM\\PotPlayer" /v InstallPath'
-      ],
-      mac: ['mdfind -name PotPlayer.app'],
-      linux: ['which potplayer']
-    },
-    vlc: {
-      win: [
-        'reg query "HKLM\\Software\\VideoLAN\\VLC" /v InstallDir',
-        'reg query "HKLM\\Software\\WOW6432Node\\VideoLAN\\VLC" /v InstallDir'
-      ],
-      mac: ['mdfind -name VLC.app'],
-      linux: ['which vlc']
-    }
-  }
-
-  // 检测播放器安装路径
-  const findPlayer = async (commands) => {
-    for (const cmd of commands[process.platform] || []) {
-      try {
-        const { stdout } = await execAsync(cmd)
-        const pathL = stdout
-          .trim()
-          .split('\n')
-          .find((line) => line.includes('REG_SZ') || line.endsWith('.app') || line.startsWith('/'))
-          ?.split(/(REG_SZ\s+|\s{2,})/)
-          .pop()
-          ?.trim()
-
-        if (pathL && fs.existsSync(pathL)) {
-          return process.platform === 'darwin'
-            ? `"${pathL}/Contents/MacOS/${pathL.split('/').pop().replace('.app', '')}"`
-            : `"${pathL}"`
-        }
-      } catch (err) {
-        console.log(err)
-      }
-    }
-    return null
-  }
-
-  // 按优先级检测
-  return {
-    potplayer: await findPlayer(players.potplayer),
-    vlc: await findPlayer(players.vlc)
-  }
-}
-
-// 调用播放器IPC接口
-ipcMain.handle('open-with-player', async (_, streamUrl) => {
-  console.log(    process.env.ProgramW6432 + '\\DAUM\\PotPlayer',
-    process.env.LOCALAPPDATA + '\\Programs\\DAUM\\PotPlayer')
-  const players = await detectPlayers()
-  const playerPath = players.potplayer || players.vlc
-
+ipcMain.handle('open-with-external-player', async (_event, videoPath, playerPath) => {
   if (!playerPath) {
-    throw new Error('未检测到支持的播放器(PotPlayer/VLC)')
+    throw new Error('未设置外部播放器路径')
   }
+  const decodedPlayerPath = decodeURIComponent(playerPath)
+  const decodedVideoPath = decodeURIComponent(videoPath)
 
-  const isPotPlayer = !!players.potplayer
-  const args = [
-    streamUrl,
-    isPotPlayer ? '/play' : '--play-and-exit',
-    isPotPlayer ? '/close' : '--no-video-title-show'
-  ]
-
-  try {
-    const command = `${playerPath} ${args.join(' ')}`
-    await execAsync(command)
-    return { success: true, player: isPotPlayer ? 'PotPlayer' : 'VLC' }
-  } catch (error) {
-    throw new Error(`${isPotPlayer ? 'PotPlayer' : 'VLC'}播放失败: ${error}`)
-  }
+  console.log(decodeURIComponent(videoPath), 'props.videoUrl')
+  return new Promise((resolve, reject) => {
+    execFile(decodedPlayerPath, [decodedVideoPath], (error) => {
+      if (error) {
+        reject(`无法打开播放器: ${error.message}`)
+      } else {
+        resolve(true)
+      }
+    })
+  })
 })

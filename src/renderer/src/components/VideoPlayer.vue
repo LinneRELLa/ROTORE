@@ -17,7 +17,7 @@
     <div v-else class="unsupported-prompt">
       <el-icon><Warning /></el-icon>
       <p>当前格式不支持播放</p>
-      <el-button type="primary" @click="openSystemPlayer"> 使用系统播放器打开 </el-button>
+      <el-button type="primary" @click="openSystemPlayer"> 使用外部播放器打开 </el-button>
     </div>
   </div>
 </template>
@@ -25,12 +25,16 @@
 <script setup lang="ts">
 import { ElNotification } from 'element-plus'
 import { ref, onMounted } from 'vue'
+import { useFile } from '@renderer/hooks/useFile'
+const { ConfigStore } = useFile()
+
 const props = defineProps({
   videoUrl: String,
   fileName: String
 })
 const supportedFormat = ref(true)
 const videoEl = ref<HTMLVideoElement>()
+const ipcRenderer = window.electron.ipcRenderer
 const checkFormatSupport = (): void => {
   if (!props.videoUrl) return
 
@@ -55,11 +59,20 @@ const checkFormatSupport = (): void => {
 
 const openSystemPlayer = async (): Promise<void> => {
   try {
-    window.nodeAPI.shell.openPath(props.videoUrl)
+    ipcRenderer
+      .invoke(
+        'open-with-external-player',
+        encodeURIComponent(props.videoUrl as string),
+        encodeURIComponent(ConfigStore.PathConfig.playerPath)
+      )
+      .then((meassage) => {
+        console.log(meassage)
+      })
+    console.log(props.videoUrl, 'props.videoUrl')
 
     ElNotification.success({
       title: '播放成功',
-      message: `正在使用系统内置播放器播放`,
+      message: `正在使用外部播放器播放`,
       duration: 2000
     })
   } catch (err) {
