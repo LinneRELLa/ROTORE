@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: torrent
+productName: ROTORE
 directories:
   buildResources: build
 files:
@@ -12,7 +12,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: torrent
+  executableName: ROTORE
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

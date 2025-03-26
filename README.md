@@ -1,8 +1,8 @@
 <!--
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
- * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-24 15:16:33
+ * @LastEditors: Linne Rella 3223961933@qq.com
+ * @LastEditTime: 2025-03-26 20:55:33
  * @FilePath: \ElectronTorrent\README.md
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -29,19 +29,22 @@
  <div>
 	<img src="https://github.com/LinneRELLa/ElectronTorrent/blob/main/resources/d3.png" />
 </div>
-- 追番
+- 追番/在线播放
 <div>
 	<img src="https://github.com/LinneRELLa/ElectronTorrent/blob/main/resources/a1.png" />
 </div>
  <div>
 	<img src="https://github.com/LinneRELLa/ElectronTorrent/blob/main/resources/a2.png" />
 </div>
+ <div>
+	<img src="https://github.com/LinneRELLa/ElectronTorrent/blob/main/resources/l1.png" />
+</div>
 
 ## 计划中的功能
 
 - 拖拽种子文件以下载
 
-- 在线播放
+- <span style="text-decoration-line: line-through;">在线播放</span> 已实现
   
 - 侧边栏功能自定义
 
