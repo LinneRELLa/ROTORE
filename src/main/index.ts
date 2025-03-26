@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-26 17:14:26
+ * @LastEditTime: 2025-03-26 17:39:18
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -410,7 +410,7 @@ ipcMain.handle('open-with-external-player', async (_event, videoPath, playerPath
   if (!playerPath) {
     throw new Error('未设置外部播放器路径')
   }
-  const decodedPlayerPath = decodeURIComponent(playerPath)
+  const decodedPlayerPath = decodeURIComponent(playerPath).replace('\\','/')
   const decodedVideoPath = decodeURIComponent(videoPath)
 
   console.log(decodeURIComponent(videoPath), 'props.videoUrl')
