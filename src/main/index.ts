@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
  * @LastEditors: Linne Rella 3223961933@qq.com
- * @LastEditTime: 2025-03-26 20:41:50
+ * @LastEditTime: 2025-03-27 18:55:16
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -27,6 +27,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/x1.ico?asset'
 import { execFile } from 'child_process'
+import { networkInterfaces } from 'os'
 
 const publicPath = app.isPackaged ? process.resourcesPath : app.getAppPath()
 import * as fs from 'fs'
@@ -107,7 +108,6 @@ function createWindow(): void {
         const instance = client.createServer({
           ws: true, // 启用WebSocket
           cors: true
-
         })
         instance.server.listen(7920)
 
@@ -221,12 +221,12 @@ function createWindow(): void {
               // })
               // torrent.resume()
 
-              torrent.on('download', (bytes) => {
-                // console.log('just downloaded: ' + bytes)
-                // console.log('total downloaded: ' + torrent.downloaded)
-                // console.log('download speed: ' + torrent.downloadSpeed)
-                // console.log('progress: ' + torrent.progress)
-              })
+              // torrent.on('download', (bytes) => {
+              //   // console.log('just downloaded: ' + bytes)
+              //   // console.log('total downloaded: ' + torrent.downloaded)
+              //   // console.log('download speed: ' + torrent.downloadSpeed)
+              //   // console.log('progress: ' + torrent.progress)
+              // })
 
               // torrent.on('metadata', () => {
               //   mainWindow.webContents.send('update-counter', 'metadata')
@@ -429,4 +429,19 @@ ipcMain.handle('open-with-external-player', async (_event, videoPath, playerPath
       }
     })
   })
+})
+
+ipcMain.handle('check-ipv6-support', () => {
+  const interfaces = networkInterfaces()
+  let hasGlobalIPv6 = false
+
+  Object.values(interfaces).forEach((details) => {
+    details?.forEach((detail) => {
+      if (detail.family === 'IPv6' && !detail.internal) {
+        hasGlobalIPv6 = true
+      }
+    })
+  })
+
+  return hasGlobalIPv6
 })

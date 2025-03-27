@@ -2,7 +2,7 @@
  * @Author: Linne Rella 3223961933@qq.com
  * @Date: 2025-03-20 18:08:34
  * @LastEditors: Linne Rella 3223961933@qq.com
- * @LastEditTime: 2025-03-26 19:44:07
+ * @LastEditTime: 2025-03-27 18:58:16
  * @FilePath: \electronTorrent\src\renderer\src\views\Download.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -20,7 +20,23 @@
   <div class="download-container">
     <!-- 头部区域 -->
     <header class="page-header">
-      <h1 class="page-title">文件下载</h1>
+      <h1 class="page-title">
+        文件下载
+        <div class="ipv6-status">
+          <el-tooltip :content="ipv6StatusMessage" placement="top">
+            <div
+              class="status-indicator"
+              :class="{ supported: ipv6Supported }"
+              @click="checkIPv6Support"
+            >
+              <el-icon :size="20">
+                <Connection />
+              </el-icon>
+            </div>
+          </el-tooltip>
+        </div>
+      </h1>
+
       <p class="page-subtitle">支持磁力链接、HTTP/HTTPS链接和本地文件路径</p>
     </header>
 
@@ -258,7 +274,7 @@
 <script lang="ts" setup>
 import type { ITorrentRender } from '@Type/index'
 import { ITorrent } from '@Type/index'
-import { ref, watch, computed, onBeforeUnmount, nextTick } from 'vue'
+import { ref, watch, computed, onBeforeUnmount, nextTick, onMounted } from 'vue'
 import { useTorrent } from '@renderer/hooks/useTorrent'
 import * as echarts from 'echarts'
 import { ElNotification } from 'element-plus'
@@ -604,6 +620,28 @@ const playVideo = async (file): Promise<void> => {
     ElNotification.error('视频播放失败: ' + err)
   }
 }
+
+//ipv6检测相关代码
+const ipv6Supported = ref(false)
+const ipv6StatusMessage = ref('正在检测IPv6支持...')
+
+const checkIPv6Support = async (): Promise<void> => {
+  try {
+    // 通过预加载脚本暴露的方法检测IPv6
+    const supported = await window.electron.ipcRenderer.invoke('check-ipv6-support')
+
+    ipv6Supported.value = supported
+    ipv6StatusMessage.value = supported ? '当前网络支持IPv6连接' : '当前网络不支持IPv6连接'
+  } catch (err) {
+    console.error('IPv6检测失败:', err)
+    ipv6StatusMessage.value = 'IPv6检测失败，点击重试'
+    ipv6Supported.value = false
+  }
+}
+// 组件挂载时立即检测
+onMounted(() => {
+  checkIPv6Support()
+})
 </script>
 <style lang="less" scoped>
 //视频弹窗
@@ -655,6 +693,29 @@ const playVideo = async (file): Promise<void> => {
   .page-subtitle {
     color: #909399;
     font-size: 0.9rem;
+  }
+
+  .ipv6-status {
+    display: inline-block;
+    .status-indicator {
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      color: #909399;
+
+      &:hover {
+        opacity: 0.8;
+      }
+
+      &.supported {
+        color: #67c23a;
+      }
+
+      &:active {
+        transform: scale(0.95);
+      }
+    }
   }
 }
 
