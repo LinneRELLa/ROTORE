@@ -1,8 +1,8 @@
 <!--
  * @Author: Linne Rella 3223961933@qq.com
  * @Date: 2025-03-20 18:08:34
- * @LastEditors: Linne Rella 3223961933@qq.com
- * @LastEditTime: 2025-03-26 19:44:07
+ * @LastEditors: chengp 3223961933@qq.com
+ * @LastEditTime: 2025-03-27 08:54:58
  * @FilePath: \electronTorrent\src\renderer\src\views\Download.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -166,7 +166,16 @@
             <div class="file-info">
               <div class="file-name file-name-side" :title="file.path">{{ file.name }}</div>
               <div class="file-actions">
-                <el-button v-if="isVideoFile(file.name)" size="small" @click.stop="playVideo(file)">
+                <el-button v-if="file.initselected" size="small">
+                  <el-icon><Select /></el-icon>
+                  已选择
+                </el-button>
+
+                <el-button
+                  v-if="isVideoFile(file.name) && file.initselected"
+                  size="small"
+                  @click.stop="playVideo(file)"
+                >
                   <el-icon><VideoPlay /></el-icon>
                   播放
                 </el-button>
@@ -590,6 +599,10 @@ const playVideo = async (file): Promise<void> => {
       const torrent = ClientStore.clientTorrentsStore.find(
         (t) => t.infoHash === selectedTask.value?.infoHash
       )
+      if(!torrent){
+        ElNotification.error('检测到任务未在进行中，请先点击继续下载')
+        return 
+      }
       const videoFile = torrent?.files.find((f) => f.path === file.path)
       currentVideoUrl.value = videoFile?.streamURL || ''
       currentFileName.value = file.name

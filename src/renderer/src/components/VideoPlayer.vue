@@ -17,6 +17,7 @@
     <div v-else class="unsupported-prompt">
       <el-icon><Warning /></el-icon>
       <p>当前格式不支持播放</p>
+      <el-button type="primary" @click="trytodecode"> 尝试硬件解码 </el-button>
       <el-button type="primary" @click="openSystemPlayer"> 使用外部播放器打开 </el-button>
     </div>
   </div>
@@ -45,8 +46,10 @@ const checkFormatSupport = (): void => {
     avi: 'video/x-msvideo'
   }[ext || '']
 
-  // supportedFormat.value = mimeType ? videoEl?.value?.canPlayType(mimeType) !== '' : false
-   supportedFormat.value = true
+  console.log(props.videoUrl, mimeType)
+
+  supportedFormat.value = mimeType ? videoEl?.value?.canPlayType(mimeType) !== '' : false
+  //  supportedFormat.value = true
 }
 
 // 打开系统播放器
@@ -57,8 +60,20 @@ const checkFormatSupport = (): void => {
 //     ElNotification.error(`打开失败: ${err}`)
 //   }
 // }
+function trytodecode(): void {
+  supportedFormat.value = true
+}
 
 const openSystemPlayer = async (): Promise<void> => {
+  if (!window.nodeAPI.fs.existsSync(ConfigStore.PathConfig.playerPath)) {
+    ElNotification.error({
+      title: '播放失败',
+      message: '设置的播放器路径无效，请前往设置页面设置路径',
+      duration: 5000
+    })
+    return
+  }
+
   try {
     ipcRenderer
       .invoke(
