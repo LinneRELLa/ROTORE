@@ -2,7 +2,7 @@
  * @Author: Linne Rella 3223961933@qq.com
  * @Date: 2025-03-20 18:08:34
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-27 08:54:58
+ * @LastEditTime: 2025-03-27 10:56:33
  * @FilePath: \electronTorrent\src\renderer\src\views\Download.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -156,57 +156,63 @@
           </div>
 
           <!-- 文件列表 -->
-          <!-- <div class="file-list">
-            <div v-for="file in selectedTask.files" :key="file.path" class="file-item">
-              <div class="file-name file-name-side" :title="file.path">{{ file.name }}</div>
-              <div class="file-size">{{ formatSize(file.size) }}</div>
-            </div>
-          </div> -->
-          <div v-for="file in selectedTask.files" :key="file.path" class="file-item">
-            <div class="file-info">
-              <div class="file-name file-name-side" :title="file.path">{{ file.name }}</div>
-              <div class="file-actions">
-                <el-button v-if="file.initselected" size="small">
-                  <el-icon><Select /></el-icon>
-                  已选择
-                </el-button>
-
-                <el-button
-                  v-if="isVideoFile(file.name) && file.initselected"
-                  size="small"
-                  @click.stop="playVideo(file)"
-                >
-                  <el-icon><VideoPlay /></el-icon>
-                  播放
-                </el-button>
-                <div class="file-size">{{ formatSize(file.size) }}</div>
+          <div class="files-section">
+            <h4 class="section-title">文件列表</h4>
+            <div class="files-container">
+              <div v-for="file in selectedTask.files" :key="file.path" class="file-item">
+                <div class="file-info">
+                  <el-button v-if="file.initselected" size="small" style="margin-right: 0.4rem;">
+                    <el-icon v-if="file.progress==1"><Select /></el-icon>
+                    <el-icon v-else><Download /></el-icon>
+                    <!-- 已选择 -->
+                  </el-button>
+                  <div class="file-name file-name-side" :title="file.path">{{ file.name }}</div>
+                  <div class="file-actions">
+                    <el-button
+                      v-if="isVideoFile(file.name) && file.initselected"
+                      size="small"
+                      @click.stop="playVideo(file)"
+                    >
+                      <el-icon><VideoPlay /></el-icon>
+                      播放
+                    </el-button>
+                    <div class="file-size">{{ formatSize(file.size) }}</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- 统计信息 -->
-          <div class="stats">
-            <div class="stat-item">
-              <label>下载进度:</label>
-              <span
-                >{{
-                  (
-                    ((selectedTask.selectedSize / selectedTask.selectedTotal || 0) as number) * 100
-                  )?.toFixed(2)
-                }}%</span
-              >
-            </div>
-            <div class="stat-item">
-              <label>下载速度:</label>
-              <span>{{
-                selectedTask.cleared ? '已完成' : formatSpeed(selectedTask.downloadSpeed || 0)
-              }}</span>
+          <div class="stats-section">
+            <h4 class="section-title">统计信息</h4>
+            <div class="stats">
+              <div class="stat-item">
+                <label>下载进度:</label>
+                <span>
+                  {{
+                    (
+                      ((selectedTask.selectedSize / selectedTask.selectedTotal || 0) as number) *
+                      100
+                    )?.toFixed(2)
+                  }}%
+                </span>
+              </div>
+              <div class="stat-item">
+                <label>下载速度:</label>
+                <span>{{
+                  selectedTask.cleared ? '已完成' : formatSpeed(selectedTask.downloadSpeed || 0)
+                }}</span>
+              </div>
             </div>
           </div>
 
           <!-- 速度曲线图 -->
-          <div class="chart-container">
-            <div ref="speedChart" style="height: 200px"></div>
+          <div class="chart-section">
+            <h4 class="section-title">速度曲线</h4>
+            <div class="chart-container">
+              <div ref="speedChart" style="height: 200px"></div>
+            </div>
           </div>
         </div>
       </transition>
@@ -264,6 +270,7 @@
     </el-dialog>
   </div>
 </template>
+
 <script lang="ts" setup>
 import type { ITorrentRender } from '@Type/index'
 import { ITorrent } from '@Type/index'
@@ -599,9 +606,9 @@ const playVideo = async (file): Promise<void> => {
       const torrent = ClientStore.clientTorrentsStore.find(
         (t) => t.infoHash === selectedTask.value?.infoHash
       )
-      if(!torrent){
+      if (!torrent) {
         ElNotification.error('检测到任务未在进行中，请先点击继续下载')
-        return 
+        return
       }
       const videoFile = torrent?.files.find((f) => f.path === file.path)
       currentVideoUrl.value = videoFile?.streamURL || ''
@@ -828,24 +835,30 @@ const playVideo = async (file): Promise<void> => {
   background: var(--bg-color-secondary);
   border-left: 1px solid var(--border-color);
   padding: 24px;
-  // height: calc(100vh - 200px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
   &::-webkit-scrollbar {
     display: none;
   }
-  overflow-y: auto;
 
   .detail-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
+    margin-bottom: 8px;
 
     h3 {
       margin: 0;
       font-size: 18px;
-      max-width: 300px;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-weight: 600;
+      // max-width: 300px;
+      // overflow: hidden;
+      // text-overflow: ellipsis;
+      // white-space: nowrap;
+      color: var(--text-color-primary);
     }
 
     .close-btn {
@@ -857,6 +870,105 @@ const playVideo = async (file): Promise<void> => {
       &:hover {
         background: var(--hover-bg);
       }
+    }
+  }
+
+  .section-title {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-color-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .files-section {
+    .files-container {
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .file-item {
+      padding: 12px;
+      border-bottom: 1px solid var(--border-color-light);
+      background: var(--bg-color-tertiary);
+      transition: background 0.2s;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover {
+        background: var(--hover-bg-light);
+      }
+
+      .file-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .file-name {
+        flex: 1;
+        font-size: 13px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--text-color-primary);
+      }
+
+      .file-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .file-size {
+          font-size: 12px;
+          color: var(--text-color-tertiary);
+          min-width: 60px;
+          text-align: right;
+        }
+      }
+    }
+  }
+
+  .stats-section {
+    .stats {
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 12px;
+      background: var(--bg-color-tertiary);
+
+      .stat-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        label {
+          font-size: 13px;
+          color: var(--text-color-secondary);
+        }
+
+        span {
+          font-size: 13px;
+          font-weight: 500;
+          color: var(--text-color-primary);
+        }
+      }
+    }
+  }
+
+  .chart-section {
+    .chart-container {
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 12px;
+      background: var(--bg-color-tertiary);
     }
   }
 }
