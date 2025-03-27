@@ -1,8 +1,13 @@
 /*
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
+<<<<<<< HEAD
  * @LastEditors: Linne Rella 3223961933@qq.com
- * @LastEditTime: 2025-03-27 18:55:16
+ * @LastEditTime: 2025-03-28 07:50:33
+=======
+ * @LastEditors: chengp 3223961933@qq.com
+ * @LastEditTime: 2025-03-27 10:10:04
+>>>>>>> 5bcb7703b1636bb4086c94c0556aea726eaf73f9
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -22,8 +27,8 @@
  * @FilePath: \srce:\new\torrent\torrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
-import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
-import { join } from 'path'
+import { app, shell, BrowserWindow, ipcMain, Menu,dialog } from 'electron'
+import { join, resolve } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/x1.ico?asset'
 import { execFile } from 'child_process'
@@ -417,11 +422,11 @@ ipcMain.handle('open-with-external-player', async (_event, videoPath, playerPath
     throw new Error('未设置外部播放器路径')
   }
   const decodedPlayerPath = decodeURIComponent(playerPath)
-  const decodedVideoPath = join(decodeURIComponent(videoPath))
+  const decodedVideoPath = decodeURIComponent(videoPath)
 
-  console.log(decodedVideoPath, 'props.videoUrl')
+  console.log(decodedVideoPath, decodedVideoPath.replaceAll('\\', '/'), 'props.videoUrl')
   return new Promise((resolve, reject) => {
-    execFile(decodedPlayerPath, [decodedVideoPath], (error) => {
+    execFile(decodedPlayerPath, [decodedVideoPath.replaceAll('\\', '/')], (error) => {
       if (error) {
         reject(`无法打开播放器: ${error.message}`)
       } else {
@@ -430,6 +435,7 @@ ipcMain.handle('open-with-external-player', async (_event, videoPath, playerPath
     })
   })
 })
+
 
 ipcMain.handle('check-ipv6-support', () => {
   const interfaces = networkInterfaces()
@@ -445,3 +451,24 @@ ipcMain.handle('check-ipv6-support', () => {
 
   return hasGlobalIPv6
 })
+
+
+// 在现有IPC处理后面添加：
+ipcMain.handle('open-directory-dialog', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory']
+  })
+  return result.filePaths[0]
+})
+
+ipcMain.handle('open-file-dialog', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [
+      { name: 'Executable Files', extensions: ['exe'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  })
+  return result.filePaths[0]
+})
+
