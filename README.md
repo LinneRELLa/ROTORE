@@ -13,7 +13,7 @@
 	<img src="https://github.com/LinneRELLa/ElectronTorrent/blob/main/resources/Xlogo2.png" style="width:256px;height:256px;"/>
 </div>
 
-基于 Electron + VUE3 + WEBTORRENT 的磁力下载工具，支持在线p2p播放（附带新番磁力库）
+基于 Electron + VUE3 + WEBTORRENT 的磁力下载工具，支持在线视频播放（附带新番磁力库）
 
 更美观、简洁、易用  
 ## 展示
@@ -39,6 +39,8 @@
  <div>
 	<img src="https://github.com/LinneRELLa/ElectronTorrent/blob/main/resources/l1.png" />
 </div>
+- 新增公网ipv6检测
+  建议开启Ipv6,ipv6对于下载速度的提升显著
 
 ## 计划中的功能
 
