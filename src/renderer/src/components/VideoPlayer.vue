@@ -17,7 +17,12 @@
     <div v-else class="unsupported-prompt">
       <el-icon><Warning /></el-icon>
       <p>当前格式不支持播放</p>
-      <el-button type="primary" @click="trytodecode"> 尝试硬件解码 </el-button>
+      <el-tooltip content="需要显卡支持，内封字幕可能无法显示" placement="top">
+        <el-button type="primary" @click="trytodecode">
+          尝试硬件解码
+          <el-icon><InfoFilled /></el-icon
+        ></el-button>
+      </el-tooltip>
       <el-button type="primary" @click="openSystemPlayer"> 使用外部播放器打开 </el-button>
     </div>
   </div>
@@ -42,7 +47,7 @@ const checkFormatSupport = (): void => {
   const ext = props.fileName?.split('.').pop()?.toLowerCase()
   const mimeType = {
     mp4: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"',
-    mkv: 'video/x-matroska',
+    // mkv: 'video/x-matroska',  //mkv不自动调用内置播放器了，内封字幕不显示
     avi: 'video/x-msvideo'
   }[ext || '']
 
@@ -137,7 +142,7 @@ defineEmits(['close'])
   text-align: center;
   background: var(--bg-color);
 
-  .el-icon {
+  & > .el-icon {
     font-size: 3rem;
     color: var(--el-color-warning);
     margin-bottom: 1rem;

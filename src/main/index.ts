@@ -1,13 +1,8 @@
 /*
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
-<<<<<<< HEAD
  * @LastEditors: Linne Rella 3223961933@qq.com
  * @LastEditTime: 2025-03-28 07:50:33
-=======
- * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-27 10:10:04
->>>>>>> 5bcb7703b1636bb4086c94c0556aea726eaf73f9
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -27,7 +22,7 @@
  * @FilePath: \srce:\new\torrent\torrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
-import { app, shell, BrowserWindow, ipcMain, Menu,dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Menu, dialog } from 'electron'
 import { join, resolve } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/x1.ico?asset'
@@ -436,22 +431,34 @@ ipcMain.handle('open-with-external-player', async (_event, videoPath, playerPath
   })
 })
 
-
 ipcMain.handle('check-ipv6-support', () => {
   const interfaces = networkInterfaces()
-  let hasGlobalIPv6 = false
 
-  Object.values(interfaces).forEach((details) => {
-    details?.forEach((detail) => {
-      if (detail.family === 'IPv6' && !detail.internal) {
-        hasGlobalIPv6 = true
+  // 公网IPv6地址范围 (2000::/3)
+  const globalUnicastIPv6Regex = /^[2-3][0-9a-f]{3}:/i
+
+  for (const details of Object.values(interfaces)) {
+    for (const detail of details || []) {
+      // 检查条件:
+      // 1. 是IPv6地址
+      // 2. 不是内网地址
+      // 3. 是全球单播地址
+      // 4. 排除特殊地址
+      if (
+        detail.family === 'IPv6' &&
+        !detail.internal &&
+        globalUnicastIPv6Regex.test(detail.address) &&
+        !detail.address.startsWith('fe80:') && // 排除链路本地
+        !detail.address.startsWith('fc') && // 排除唯一本地
+        !detail.address.startsWith('fd')
+      ) {
+        // 排除唯一本地
+        return true
       }
-    })
-  })
-
-  return hasGlobalIPv6
+    }
+  }
+  return false
 })
-
 
 // 在现有IPC处理后面添加：
 ipcMain.handle('open-directory-dialog', async () => {
@@ -471,4 +478,3 @@ ipcMain.handle('open-file-dialog', async () => {
   })
   return result.filePaths[0]
 })
-

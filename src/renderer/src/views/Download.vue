@@ -1,10 +1,10 @@
 <!--
  * @Author: Linne Rella 3223961933@qq.com
  * @Date: 2025-03-20 18:08:34
- * @LastEditTime: 2025-03-28 07:50:53
+ * @LastEditTime: 2025-03-28 10:04:20
  * @FilePath: \electronTorrent\src\renderer\src\views\Download.vue
  * @Date: 2025-03-17 14:28:24
- * @LastEditors: Linne Rella 3223961933@qq.com
+ * @LastEditors: chengp 3223961933@qq.com
  * @LastEditTime: 2025-03-20 16:22:44
  * @FilePath: \ElectronTorrent\src\renderer\src\views\Download.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
@@ -77,8 +77,14 @@
               <div class="task-info">
                 <div class="task-header">
                   <h3 class="task-title" :title="x.name">{{ x.name }}</h3>
-                  <el-tag :type="x.fileSelected ? 'success' : 'warning'" size="small">
-                    {{ x.fileSelected ? '已选文件' : '待选文件' }}
+                  <el-tag v-if="x.cleared" :type="'success'" size="small">
+                    {{ '已经完成' }}
+                  </el-tag>
+                  <el-tag v-if="!x.fileSelected" :type="'warning'" size="small">
+                    {{ '待选文件' }}
+                  </el-tag>
+                  <el-tag v-if="isPaused(x)" :type="'warning'" size="small">
+                    {{ '暂停中' }}
                   </el-tag>
                 </div>
 
@@ -96,31 +102,30 @@
                     <el-icon><Download /></el-icon>
                     {{ formatSize(x.downloaded || 0) }}
                   </div>
-                  <div class="stat-item" v-if="!x.cleared">
+                  <div class="stat-item" v-if="!x.cleared && !isPaused(x)">
                     <el-icon><Sort /></el-icon>
                     {{ formatSize(x.downloadSpeed || 0) + '/s' }}
                   </div>
-                  <div class="stat-item" style="cursor: pointer" @click.stop="openfolder(x)">
+                  <!-- <div class="stat-item" style="cursor: pointer" @click.stop="openfolder(x)">
                     <el-icon><Folder /></el-icon>
                     {{ '打开目录' }}
-                  </div>
+                  </div> -->
                 </div>
               </div>
-
-              <!-- 操作按钮 -->
               <div class="task-actions" @click.stop>
                 <el-button
-                  v-if="
-                    x.fileSelected &&
-                    !x.cleared &&
-                    !ClientStore.clientTorrentsStore.find((y) => y.initURL == x.initURL)
-                  "
+                  v-if="isPaused(x)"
                   type="primary"
                   size="small"
                   plain
-                  @click="resume(x)"
+                  @click.stop="resume(x)"
                 >
+                  <el-icon><RefreshLeft /></el-icon>
                   继续下载
+                </el-button>
+
+                <el-button size="small" plain @click.stop="openfolder(x)"
+                  ><el-icon><FolderOpened /></el-icon> 打开目录
                 </el-button>
 
                 <el-button
@@ -128,8 +133,9 @@
                   type="primary"
                   size="small"
                   plain
-                  @click="selectFile(x)"
+                  @click.stop="selectFile(x)"
                 >
+                  <el-icon><Memo /></el-icon>
                   选择文件
                 </el-button>
 
@@ -140,7 +146,9 @@
                   v-model:visible="popoverVisible[x.infoHash]"
                 >
                   <template #reference>
-                    <el-button type="danger" size="small" plain @click.stop> 删除任务 </el-button>
+                    <el-button type="danger" size="small" plain @click.stop>
+                      <el-icon><DocumentDelete /></el-icon>删除任务
+                    </el-button>
                   </template>
                   <p class="delete-confirm">确认删除该任务？</p>
                   <el-checkbox v-model="FileDelte" label="同时删除文件" class="FileDelte" />
@@ -159,11 +167,12 @@
         </div>
       </div>
       <!-- 任务详情侧边栏 -->
-      <transition name="slide-fade">
+      <transition name="width-fade">
         <div v-if="selectedTask" class="task-detail">
+     
           <div class="detail-header">
             <h3>{{ selectedTask.name }}</h3>
-            <el-icon class="close-btn" @click="selectedTask = null"><Close /></el-icon>
+            <el-icon @click="selectedTask=null" style="cursor:pointer"><DArrowRight /></el-icon>
           </div>
 
           <!-- 文件列表 -->
@@ -172,8 +181,8 @@
             <div class="files-container">
               <div v-for="file in selectedTask.files" :key="file.path" class="file-item">
                 <div class="file-info">
-                  <el-button v-if="file.initselected" size="small" style="margin-right: 0.4rem;">
-                    <el-icon v-if="file.progress==1"><Select /></el-icon>
+                  <el-button v-if="file.initselected" size="small" style="margin-right: 0.4rem">
+                    <el-icon v-if="file.progress == 1"><Select /></el-icon>
                     <el-icon v-else><Download /></el-icon>
                     <!-- 已选择 -->
                   </el-button>
@@ -212,7 +221,11 @@
               <div class="stat-item">
                 <label>下载速度:</label>
                 <span>{{
-                  selectedTask.cleared ? '已完成' : formatSpeed(selectedTask.downloadSpeed || 0)
+                  selectedTask.cleared
+                    ? '已完成'
+                    : isPaused(selectedTask)
+                      ? '-'
+                      : formatSpeed(selectedTask.downloadSpeed || 0)
                 }}</span>
               </div>
             </div>
@@ -316,7 +329,13 @@ function confirmDelete(torrent: ITorrentRender): void {
   Remove(torrent, false)
   popoverVisible.value[torrent.infoHash] = false
 }
-
+function isPaused(x): boolean {
+  return (
+    !x.cleared &&
+    !ClientStore.clientTorrentsStore.find((y) => y.initURL == x.initURL) &&
+    x.fileSelected
+  )
+}
 function Remove(torrent: ITorrentRender, removeFile: boolean): void {
   ClientStore.AlltorrentsStore = ClientStore.AlltorrentsStore.filter(
     (x) => x.infoHash !== torrent.infoHash
@@ -642,11 +661,11 @@ const ipv6StatusMessage = ref('正在检测IPv6支持...')
 
 const checkIPv6Support = async (): Promise<void> => {
   try {
-    // 通过预加载脚本暴露的方法检测IPv6
+    ipv6StatusMessage.value = '正在检测IPv6支持...'
     const supported = await window.electron.ipcRenderer.invoke('check-ipv6-support')
 
     ipv6Supported.value = supported
-    ipv6StatusMessage.value = supported ? '当前网络支持IPv6连接' : '当前网络不支持IPv6连接'
+    ipv6StatusMessage.value = supported ? '检测到公网IPv6地址' : '未检测到公网IPv6地址'
   } catch (err) {
     console.error('IPv6检测失败:', err)
     ipv6StatusMessage.value = 'IPv6检测失败，点击重试'
@@ -769,6 +788,7 @@ onMounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-direction: column;
     gap: 1rem;
   }
 
@@ -873,7 +893,7 @@ onMounted(() => {
   &.has-selected {
     .task-list-wrapper {
       flex: 1;
-      max-width: calc(100% - 400px);
+      // max-width: calc(100% - 400px);
     }
     .task-title {
       max-width: calc(100vw - 820px);
@@ -895,6 +915,10 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  // 添加以下属性确保动画流畅
+  box-sizing: border-box;
+  flex-shrink: 0;
+  will-change: width, opacity;
 
   &::-webkit-scrollbar {
     display: none;
@@ -903,7 +927,7 @@ onMounted(() => {
   .detail-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     margin-bottom: 8px;
 
     h3 {
@@ -917,9 +941,11 @@ onMounted(() => {
       color: var(--text-color-primary);
     }
 
-    .close-btn {
+    .el-icon {
       cursor: pointer;
-      padding: 8px;
+      margin-top: 8px;
+      margin-left: 8px;
+      // padding: 8px;
       border-radius: 50%;
       transition: background 0.2s;
 
@@ -1073,6 +1099,27 @@ onMounted(() => {
   background: var(--bg-color);
   border-radius: 8px;
   padding: 16px;
+}
+
+.width-fade-enter-active,
+.width-fade-leave-active {
+  transition: all 0.8s ease;
+  overflow: hidden;
+}
+
+.width-fade-enter-from,
+.width-fade-leave-to {
+  opacity: 0;
+  width: 0 !important;
+  padding-left: 0;
+  padding-right: 0;
+  border-left-width: 0;
+}
+
+.width-fade-enter-to,
+.width-fade-leave-from {
+  opacity: 1;
+  width: 400px;
 }
 
 .slide-fade-enter-active,
