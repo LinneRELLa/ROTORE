@@ -1,8 +1,8 @@
 /*
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
- * @LastEditors: Linne Rella 3223961933@qq.com
- * @LastEditTime: 2025-03-28 07:50:33
+ * @LastEditors: chengp 3223961933@qq.com
+ * @LastEditTime: 2025-04-01 10:11:53
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -23,54 +23,11 @@
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 import { app, shell, BrowserWindow, ipcMain, Menu, dialog } from 'electron'
-import { join, resolve } from 'path'
+import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/x1.ico?asset'
 import { execFile } from 'child_process'
 import { networkInterfaces } from 'os'
-
-const publicPath = app.isPackaged ? process.resourcesPath : app.getAppPath()
-import * as fs from 'fs'
-
-const configPath = join(publicPath, 'config/config.json')
-process.title = 'ROTORE'
-
-app.setName('ROTORE')
-if (process.platform === 'win32') {
-  process.env.ELECTRON_DEFAULT_NAME = 'ROTORE'
-}
-// console.log(__dirname,configPath)
-
-ipcMain.handle('getPath', async () => {
-  return configPath
-})
-
-//读取本地下载记录
-const DownloadStore = fs.readFileSync(join(publicPath, 'config/DownloadStore.json'), 'utf-8')
-
-ipcMain.handle('getDownloadStore', async () => {
-  console.log(DownloadStore, 'DownloadStore')
-  return DownloadStore
-})
-//写入本地下载记录
-function writeDownloadStore(data: object): void {
-  const filePath = join(publicPath, 'config/DownloadStore.json')
-  const fileContent = JSON.stringify(data, null, 2) // 格式化 JSON
-  fs.writeFileSync(filePath, fileContent, 'utf-8')
-}
-
-ipcMain.handle('setDownloadStore', async (_event, data) => {
-  writeDownloadStore(data)
-  console.log('DownloadStore updated')
-})
-
-ipcMain.on('toggle-devtools', () => {
-  const win = BrowserWindow.getFocusedWindow()
-  if (win) {
-    win.webContents.toggleDevTools()
-  }
-})
-import trackerlist from './trackerlist.json'
 
 function createWindow(): void {
   // Create the browser window.
@@ -86,7 +43,10 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       webSecurity: false, // 禁用同源策略
-      plugins: true
+      plugins: true,
+      webviewTag: true, // 启用 webview 标签
+      // nodeIntegration: true,
+      // contextIsolation: false
     }
   })
 
@@ -333,6 +293,34 @@ function createWindow(): void {
     }
   ])
   Menu.setApplicationMenu(menu)
+  try {
+    const { proxyPath, useProxy } = JSON.parse(
+      fs.readFileSync(join(publicPath, 'config/config.json'), 'utf-8')
+    )
+    if (useProxy && proxyPath) {
+      console.log('设置代理' + proxyPath)
+      mainWindow.webContents.session.setProxy({
+        proxyRules: proxyPath
+      })
+    }
+  } catch {
+    console.log('代理读取失败')
+  }
+
+  // 在createWindow函数后添加代理处理
+  ipcMain.on('toggle-proxy', (_, config) => {
+    const mainWindow = BrowserWindow.getFocusedWindow()
+    if (!mainWindow) return
+
+    if (config.useProxy && config.proxyPath) {
+      mainWindow.webContents.session.setProxy({
+        proxyRules: config.proxyPath
+      })
+    } else {
+      // 清除代理设置
+      mainWindow.webContents.session.setProxy({ proxyRules: '' })
+    }
+  })
 
   ipcMain.on('window-min', function () {
     console.log('minimize')
@@ -375,6 +363,49 @@ function createWindow(): void {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
+
+const publicPath = app.isPackaged ? process.resourcesPath : app.getAppPath()
+import * as fs from 'fs'
+
+const configPath = join(publicPath, 'config/config.json')
+process.title = 'ROTORE'
+
+app.setName('ROTORE')
+if (process.platform === 'win32') {
+  process.env.ELECTRON_DEFAULT_NAME = 'ROTORE'
+}
+// console.log(__dirname,configPath)
+
+ipcMain.handle('getPath', async () => {
+  return configPath
+})
+
+//读取本地下载记录
+const DownloadStore = fs.readFileSync(join(publicPath, 'config/DownloadStore.json'), 'utf-8')
+
+ipcMain.handle('getDownloadStore', async () => {
+  console.log(DownloadStore, 'DownloadStore')
+  return DownloadStore
+})
+//写入本地下载记录
+function writeDownloadStore(data: object): void {
+  const filePath = join(publicPath, 'config/DownloadStore.json')
+  const fileContent = JSON.stringify(data, null, 2) // 格式化 JSON
+  fs.writeFileSync(filePath, fileContent, 'utf-8')
+}
+
+ipcMain.handle('setDownloadStore', async (_event, data) => {
+  writeDownloadStore(data)
+  console.log('DownloadStore updated')
+})
+
+ipcMain.on('toggle-devtools', () => {
+  const win = BrowserWindow.getFocusedWindow()
+  if (win) {
+    win.webContents.toggleDevTools()
+  }
+})
+import trackerlist from './trackerlist.json'
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.

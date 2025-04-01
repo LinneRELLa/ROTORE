@@ -9,7 +9,11 @@ export const useConfigStore = defineStore('config', {
         base: '',
         proxy: '',
         source: '',
-        downloadPath:'',
+        downloadPath: '',
+        playerPath: '',
+        useProxy: false,
+        proxyPath: 'socks5://127.0.0.1:7890',
+        homePath: ''
       }
     }
   }

@@ -27,7 +27,10 @@ let PathConfig: IPathConfig = {
   proxy: '',
   source: '',
   downloadPath: '',
-  playerPath:''
+  playerPath: '',
+  useProxy: false,
+  proxyPath: '',
+  homePath: ''
 }
 
 const ipcRenderer = window.electron.ipcRenderer

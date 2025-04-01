@@ -3,5 +3,8 @@
   "proxy": "https://tv.rellal.com:9099/acg",
   "source": "https://acg.rip",
   "downloadPath": "C:/Downloads",
-  "playerPath": ""
+  "playerPath": "",
+  "useProxy": false,
+  "proxyPath": "socks5://127.0.0.1:7890",
+  "homePath": "local"
 }
