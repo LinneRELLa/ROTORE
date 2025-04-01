@@ -46,8 +46,10 @@
               class="item-link"
             >
               <div class="item-image-wrapper">
-                <div class="item-image">
-                  <!-- :style="item['图床'] ? { backgroundImage: 'url(' + item['图床'] + ')' } : {}" -->
+                <div
+                  class="item-image"
+                  :style="item['图床'] ? { backgroundImage: 'url(' + item['图床'] + ')' } : {}"
+                >
                   <span v-if="!item['图床']" class="image-placeholder">暂无图片</span>
                 </div>
               </div>
