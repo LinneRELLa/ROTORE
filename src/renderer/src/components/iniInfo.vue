@@ -40,7 +40,7 @@
           </div>
           <div class="items">
             <router-link
-              v-for="(item, itemIndex) in dayInfo.children"
+              v-for="item in dayInfo.children"
               :key="item['关键字']"
               :to="`/detail?key=${item['关键字']}`"
               class="item-link"
@@ -48,7 +48,11 @@
               <div class="item-image-wrapper">
                 <div
                   class="item-image"
-                  :style="item['图床'] ? { backgroundImage: 'url(' + item['图床'] + ')' } : {}"
+                  :data-src="item['图床']"
+                  ref="imageRefs"
+                  :style="{
+                    backgroundImage: loadedImages[item['图床']] ? 'url(' + item['图床'] + ')' : ''
+                  }"
                 >
                   <span v-if="!item['图床']" class="image-placeholder">暂无图片</span>
                 </div>
@@ -62,7 +66,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { normal } from '@renderer/http/index'
 import { useRouter } from 'vue-router'
 let done = ref<boolean>(false)
@@ -102,6 +106,9 @@ function toload() {
             info.value[x.DAY - 1].children.push(x)
           }
           console.log(info.value)
+          nextTick(() => {
+            observeImages()
+          })
         }
       })
     }, 50)
@@ -162,6 +169,42 @@ const router = useRouter()
 function searchX(): void {
   router.push(`/detail?key=${searchQuery.value}`)
 }
+
+//图片懒加载
+
+const imageRefs = ref<HTMLElement[]>([]) // 存放所有图片的 DOM 引用
+const loadedImages = ref<Record<string, boolean>>({}) // 记录哪些图片已加载
+
+function loadImage(el: HTMLElement): void {
+  const url = el.dataset.src
+  if (!url || loadedImages.value[url]) return
+
+  const img = new Image()
+  img.src = url
+  img.onload = () => {
+    loadedImages.value[url] = true
+    el.style.backgroundImage = `url(${url})`
+  }
+}
+
+function observeImages(): void {
+  console.log('observeImages')
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          console.log('intersec')
+          loadImage(entry.target as HTMLElement)
+        }
+      }
+    },
+    { threshold: 0.1 }
+  )
+
+  imageRefs.value.forEach((el) => observer.observe(el))
+}
+
+onMounted(() => {})
 </script>
 <style scoped lang="less">
 // Variables for consistent theming
