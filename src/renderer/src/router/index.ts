@@ -31,17 +31,7 @@ const router = createRouter({
       // which is lazy-loaded when the route is visited.
       component: (): Promise<Component> =>
         import(/* webpackChunkName: "about" */ '@renderer/views/detail.vue')
-    },
-    {
-      path: '/download',
-      name: 'download',
-      component: (): Promise<Component> => import('@renderer/views/Download.vue')
-    },
-    {
-      path: '/option',
-      name: 'option',
-      component: (): Promise<Component> => import('@renderer/views/option.vue')
-    },
+    }
 
   ]
 })

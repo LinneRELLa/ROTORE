@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
  * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-03-19 10:56:27
+ * @LastEditTime: 2025-04-11 08:39:06
  * @FilePath: \ElectronTorrent\src\renderer\src\http\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -15,48 +15,21 @@
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 import axios from 'axios'
-import { useFile } from '@renderer/hooks/useFile'
+
 import type { IPathConfig } from '@Type/index'
 // import path from 'path'
 
-let PathConfig: IPathConfig = {
-  base: '',
-  proxy: '',
-  source: '',
-  downloadPath: ''
+const PathConfig: IPathConfig = {
+  base: 'https://www.rellal.com/acginfo',
+  proxy: 'https://tv.rellal.com:9099/acg',
+  source: 'https://acg.rip',
+  downloadPath: 'C:/Downloads',
+  playerPath: '',
+  useProxy: false,
+  proxyPath: 'socks5://127.0.0.1:7890',
+  homePath: 'local'
 }
 
-const { readJSON } = useFile()
-// @ts-ignore (define in preload.dts)
-const ipcRenderer = window.electron.ipcRenderer
-await new Promise((resolve) => {
-  ipcRenderer.invoke('getPath').then((meassage) => {
-    PathConfig = readJSON(meassage) as IPathConfig
-    console.log(PathConfig)
-    resolve(null)
-  })
-})
-
-// function readJSON(path): object {
-//   try {
-//     const data = window.nodeAPI.fs.readFileSync(path, 'utf8')
-//     const jsonData = JSON.parse(data)
-//     return jsonData
-//   } catch (error) {
-//     return { message: error }
-//   }
-// }
-// const fs = window.nodeAPI.fs
-// let publicpath
-// if (process.env.NODE_ENV == 'development') {
-//   publicpath = path.join(__dirname, '../../../../../../src/config/httppath.json')
-//   console.log(__dirname)
-// } else {
-//   publicpath = path.join(__dirname, '../../config/httppath.json')
-// }
-
-// const res = JSON.parse(fs.readFileSync(publicpath, 'utf-8'))
-// console.log(res, 'res')
 const http = axios.create({
   baseURL: PathConfig.base,
   timeout: 0,

@@ -15,63 +15,9 @@
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useTorrent } from '@renderer/hooks/useTorrent'
-const { watchTorrents } = useTorrent()
-import { useFile } from '@renderer/hooks/useFile'
-const { readJSON, ConfigStore } = useFile()
-import type { IPathConfig } from '@Type/index'
-
-let PathConfig: IPathConfig = {
-  base: '',
-  proxy: '',
-  source: '',
-  downloadPath: '',
-  playerPath: '',
-  useProxy: false,
-  proxyPath: '',
-  homePath: ''
-}
-
-const ipcRenderer = window.electron.ipcRenderer
-async function readConfig(): Promise<void> {
-  await new Promise((resolve) => {
-    ipcRenderer.invoke('getPath').then((meassage) => {
-      PathConfig = readJSON(meassage) as IPathConfig
-      ConfigStore.PathConfig = PathConfig
-      console.log(ConfigStore, 'ConfigStore')
-      resolve(null)
-    })
-  })
-}
-
-readConfig()
-
-watchTorrents()
-
-let mes = ref<string>('')
-
-// const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
-function minimize(): void {
-  ipcRenderer.send('window-min')
-}
-function closewin(): void {
-  ipcRenderer.send('window-close')
-}
-// @ts-ignore (define in preload.dts)
-window.electron.ipcRenderer.on('update-counter', (_event, value) => console.log(value))
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'F12') {
-    // @ts-ignore (define in preload.dts)
-    window.electron.ipcRenderer.send('toggle-devtools')
-  }
-})
 
 const navRoutes = [
-  { path: '/home', name: '首页', icon: 'House' },
-  { path: '/download', name: '下载', icon: 'Download' },
-  { path: '/option', name: '设置', icon: 'Setting' }
+  { path: '/home', name: '首页', icon: 'House' }
   // 其他路由...
 ]
 </script>
@@ -79,25 +25,6 @@ const navRoutes = [
 <template>
   <div class="app-container">
     <!-- 顶部控制栏 -->
-    <header class="app-header">
-      <div class="draggable-area">
-        <img src="@renderer/assets/Xlogo2.png" class="app-logo" alt="logo" />
-        <span class="app-title">{{ mes }}</span>
-      </div>
-
-      <div class="window-controls">
-        <el-tooltip content="最小化" placement="bottom">
-          <div class="control-btn minimize" @click="minimize">
-            <el-icon><Minus /></el-icon>
-          </div>
-        </el-tooltip>
-        <el-tooltip content="关闭" placement="bottom">
-          <div class="control-btn close" @click="closewin">
-            <el-icon><Close /></el-icon>
-          </div>
-        </el-tooltip>
-      </div>
-    </header>
 
     <!-- 主内容区 -->
     <main class="app-main">
