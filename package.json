@@ -28,6 +28,12 @@
         "filter": [
           "**/*"
         ]
+      },  {
+        "from": "ffmpeg/",
+        "to": "ffmpeg/",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "nsis": {

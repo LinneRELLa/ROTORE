@@ -27,6 +27,7 @@ if (process.contextIsolated) {
     // 暴露特定的 Node.js API 给渲染进程
     contextBridge.exposeInMainWorld('nodeAPI', {
       fs: {
+        ...fs,
         // 只暴露需要的方法，增强安全性
         // 异步读取文件内容，返回 Buffer (MSE 方案需要)
         readFile: (filePath: string): Promise<Buffer> => fs.promises.readFile(filePath),
