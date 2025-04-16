@@ -1,66 +1,72 @@
+
+
 <template>
-  <div class="ini-info" :style="{ backgroundImage: 'url(' + bkg + ')' }">
-    <div class="overlay">
-      <header class="controls">
+  <div class="ini-info">
+    <div class="background-overlay"></div> <div class="content-container"> <header class="controls">
         <div class="navigation">
-          <button class="change" :class="{ enabled: done }" @click="change(-3)">
-            <el-icon>
-              <ArrowLeft />
-            </el-icon>
+          <button class="nav-btn" :class="{ enabled: done }" @click="change(-3)" title="上一季度">
+            <el-icon><ArrowLeft /></el-icon>
           </button>
-          <span class="quarter">当前季度：{{ formatJidu(jidu) }}</span>
-          <button class="change" :class="{ enabled: done }" @click="change(3)">
-            <el-icon>
-              <ArrowRight />
-            </el-icon>
+          <span class="quarter-display">{{ formatJidu(jidu) }}</span>
+          <button class="nav-btn" :class="{ enabled: done }" @click="change(3)" title="下一季度">
+            <el-icon><ArrowRight /></el-icon>
           </button>
         </div>
         <div class="search-container">
           <el-input
             v-model="searchQuery"
-            placeholder="搜索番剧名称或关键字"
+            placeholder="搜索番剧..."
             clearable
             class="search-input"
+            @keyup.enter="searchX"
+            prefix-icon="Search"
           >
-            <template #append>
-              <el-button>
-                <el-icon>
-                  <Search @click="searchX" />
-                </el-icon>
-              </el-button>
-            </template>
-          </el-input>
+            </el-input>
         </div>
       </header>
-      <section class="schedule">
-        <article v-for="(dayInfo, dayIndex) in filteredInfo" :key="dayIndex" class="day-schedule">
-          <div class="day-label">
-            <span>{{ xingqi[dayInfo.day] }}</span>
-            <hr />
-          </div>
-          <div class="items">
-            <router-link
-              v-for="item in dayInfo.children"
-              :key="item['关键字']"
-              :to="`/detail?key=${item['关键字']}`"
-              class="item-link"
-            >
-              <div class="item-image-wrapper">
-                <div
-                  class="item-image"
-                  :data-src="item['图床']"
-                  ref="imageRefs"
-                  :style="{
-                    backgroundImage: loadedImages[item['图床']] ? 'url(' + item['图床'] + ')' : ''
-                  }"
-                >
-                  <span v-if="!item['图床']" class="image-placeholder">暂无图片</span>
+
+      <section class="schedule-grid">
+        <transition-group name="day-fade" tag="div" class="days-wrapper"> <article v-for="(dayInfo, dayIndex) in filteredInfo" :key="dayInfo.day" class="day-schedule">
+            <div class="day-header">
+              <span class="day-label">{{ xingqi[dayInfo.day] }}</span>
+              <div class="divider"></div>
+            </div>
+            <transition-group name="item-fade" tag="div" class="items-grid">
+              <router-link
+                v-for="item in dayInfo.children"
+                :key="item['关键字']"
+                :to="`/detail?key=${encodeURIComponent(item['关键字'])}`"
+                class="item-card"
+              >
+                <div class="item-image-wrapper">
+                  <div
+                    class="item-image"
+                    :data-src="item['图床']"
+                    ref="imageRefs"
+                    :style="{
+                      backgroundImage: loadedImages[item['图床']] ? 'url(' + item['图床'] + ')' : 'none', // 使用 none 替代空字符串
+                      backgroundColor: !loadedImages[item['图床']] ? '#333' : 'transparent' // 加载时背景色
+                    }"
+                  >
+                    <div v-if="!loadedImages[item['图床']]" class="image-placeholder">
+                      <el-icon><Picture /></el-icon>
+                      </div>
+                  </div>
                 </div>
-              </div>
-              <div class="item-name">{{ item.Name }}</div>
-            </router-link>
-          </div>
-        </article>
+                <div class="item-info">
+                   <span class="item-name" :title="item.Name">{{ item.Name }}</span>
+                </div>
+              </router-link>
+            </transition-group>
+          </article>
+        </transition-group>
+        <div v-if="filteredInfo.length === 0 && !isLoading" class="no-results">
+           没有找到匹配的番剧 (´•_•`)
+        </div>
+         <div v-if="isLoading" class="loading-indicator">
+           <el-icon class="is-loading"><Loading /></el-icon>
+           加载中...
+        </div>
       </section>
     </div>
   </div>
@@ -207,219 +213,321 @@ function observeImages(): void {
 onMounted(() => {})
 </script>
 <style scoped lang="less">
-// Variables for consistent theming
-@dark-bg: #1a1a1a;
-@text-color: #e0e0e0;
-@accent-color: #4a90e2;
-@card-bg: rgba(40, 40, 40, 0.85);
-
+@import '@renderer/assets/variables.less'; // 引入全局变量
 .ini-info {
-  min-height: 100vh;
+  height: 100%; // 继承父容器高度
+  width: 100%;
+  position: relative; // 为遮罩层定位
   background-size: cover;
-  background-position: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background-color: @dark-bg;
+  background-position: center center;
+  background-attachment: fixed; // 固定背景，滚动时更有层次感
+  background-color: @content-bg; // 无背景图时的底色
+  display: flex; // 使用 Flex 布局
+  flex-direction: column; // 垂直排列
+  overflow: hidden; // 防止 ini-info 自身滚动
 }
 
-.overlay {
-  background: @card-bg;
-  backdrop-filter: blur(8px);
-  border-radius: 12px;
-  padding: 24px;
-  width: 90%;
-  max-width: 1200px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+.background-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(18, 18, 18, 0.6); // 半透明黑色遮罩
+  backdrop-filter: blur(10px) saturate(150%); // 增强毛玻璃效果
+  z-index: 1;
 }
 
-.controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  margin-bottom: 24px;
-  color: @text-color;
-
-  .change {
-    background: none;
-    border: none;
-    color: @text-color;
-    cursor: pointer;
-    padding: 8px;
-    transition: all 0.3s ease;
-
-    &:hover,
-    &.enabled {
-      color: @accent-color;
-      transform: translateY(-2px);
-    }
-  }
-
-  .quarter {
-    font-size: 18px;
-    font-weight: 500;
-    padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-  }
-}
-
-.schedule {
+.content-container {
+  position: relative;
+  z-index: 2;
+  padding: 20px 24px; // 与 App.vue content-wrapper 一致
+  flex: 1; // 占据剩余空间
+  overflow-y: auto; // 内容本身可滚动
   display: flex;
   flex-direction: column;
-  gap: 24px;
 
-  .day-schedule {
-    .day-label {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
-
-      span {
-        font-size: 20px;
-        color: @text-color;
-        width: 100px;
-        font-weight: 500;
-      }
-
-      hr {
-        flex: 1;
-        border: none;
-        height: 1px;
-        background: rgba(255, 255, 255, 0.2);
-      }
-    }
-
-    .items {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 16px;
-
-      .item-link {
-        display: flex;
-        flex-direction: column;
-        text-decoration: none;
-        color: @text-color;
-        transition: transform 0.2s ease;
-
-        &:hover {
-          transform: translateY(-4px);
-        }
-
-        .item-image-wrapper {
-          position: relative;
-          width: 100%;
-          height: 220px;
-          border-radius: 8px;
-          overflow: hidden;
-          background: #333;
-
-          .item-image {
-            width: 100%;
-            height: 100%;
-            background-size: cover;
-            background-position: center;
-            transition: opacity 0.3s ease;
-          }
-
-          .image-placeholder {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #888;
-            font-size: 14px;
-            text-align: center;
-          }
-        }
-
-        .item-name {
-          margin-top: 8px;
-          font-size: 14px;
-          text-align: center;
-          line-height: 1.4;
-          padding: 4px;
-          word-break: break-word;
-        }
-      }
-    }
-  }
+  // 滚动条样式 (继承自全局或在此重新定义)
+  &::-webkit-scrollbar { width: 6px; height: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(153, 153, 153, 0.4); border-radius: 3px; }
+  &::-webkit-scrollbar-thumb:hover { background: rgba(153, 153, 153, 0.6); }
 }
 
-// Remove animation if not needed or adjust timing
-@keyframes subtle-move {
-  0% {
-    background-position: center top;
-  }
 
-  100% {
-    background-position: center bottom;
-  }
-}
-
-//搜索相关
+// --- Controls Header ---
 .controls {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
+  flex-wrap: wrap; // 允许换行
   align-items: center;
+  justify-content: space-between; // 两端对齐
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 28px; // 增加底部间距
+  padding: 10px;
+  background: rgba(30, 30, 30, 0.6); // 控制栏背景
+  border-radius: @border-radius-card;
+  backdrop-filter: blur(5px);
 
   .navigation {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px; // 调整导航按钮间距
+
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: @text-secondary;
+      cursor: pointer;
+      padding: 8px 10px; // 调整内边距
+      border-radius: 6px; // 圆角
+      transition: all @transition-duration ease;
+      display: inline-flex; // 使图标居中
+      align-items: center;
+      justify-content: center;
+
+      .el-icon {
+        font-size: 18px; // 图标大小
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.2);
+        color: @text-color;
+        transform: scale(1.05); // 悬浮放大
+      }
+
+      // Consider disabling pointer events if not enabled
+      // &:not(.enabled) {
+      //   opacity: 0.5;
+      //   cursor: not-allowed;
+      // }
+    }
+
+    .quarter-display {
+      font-size: 16px; // 字号
+      font-weight: 600; // 加粗
+      color: @text-color;
+      padding: 6px 14px;
+      background: rgba(0, 0, 0, 0.2); // 深色背景强调
+      border-radius: 6px;
+      white-space: nowrap; // 防止换行
+    }
   }
 
   .search-container {
-    flex: 1;
-    max-width: 300px;
-    min-width: 200px;
+    flex-grow: 1; // 占据剩余空间
+    max-width: 320px; // 限制最大宽度
+    min-width: 200px; // 保证最小宽度
+
+    .search-input {
+      --el-input-bg-color: rgba(255, 255, 255, 0.1);
+      --el-input-border-color: transparent;
+      --el-input-hover-border-color: transparent;
+      --el-input-focus-border-color: @primary-color;
+      --el-input-placeholder-color: @text-secondary;
+      --el-input-text-color: @text-color;
+      --el-border-radius-base: 6px;
+
+      :deep(.el-input__wrapper) {
+        background-color: var(--el-input-bg-color);
+        box-shadow: none; // 去掉默认阴影
+        border-radius: var(--el-border-radius-base);
+        transition: background-color @transition-duration ease, box-shadow @transition-duration ease;
+        &:hover {
+           background-color: rgba(255, 255, 255, 0.15);
+        }
+         &.is-focus {
+           background-color: rgba(255, 255, 255, 0.12);
+           box-shadow: 0 0 0 1px var(--el-input-focus-border-color) inset; // 焦点时内边框高亮
+         }
+      }
+      :deep(.el-input__inner) {
+         color: var(--el-input-text-color);
+      }
+       :deep(.el-input__prefix .el-input__icon) {
+         color: @text-secondary;
+       }
+    }
   }
 }
 
-// .search-input {
-//   :deep(.el-input__inner) {
-//     background-color: rgba(255, 255, 255, 0.1);
-//     border: 1px solid rgba(255, 255, 255, 0.2);
-//     color: #e0e0e0;
-//     transition: all 0.3s ease;
-
-//     &:focus {
-//       border-color: #4a90e2;
-//       box-shadow: 0 0 8px rgba(74, 144, 226, 0.3);
-//     }
-//   }
-
-//   :deep(.el-input__prefix) {
-//     color: rgba(224, 224, 224, 0.7);
-//   }
-// }
-
-// .fade-enter-active,
-// .fade-leave-active {
-//   transition: all 2s ease;
-//   position: absolute;
-// }
-
-// .fade-enter-from,
-// .fade-leave-to {
-//   opacity: 0;
-//   transform: translateY(-10px);
-// }
-
-// .fade-move {
-//   transition: transform 2s ease;
-// }
-
-.items {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
+// --- Schedule Grid ---
+.schedule-grid {
+  flex: 1; // 占据剩余空间
+  .days-wrapper { // transition-group 的外层容器
+     display: flex;
+     flex-direction: column;
+     gap: 30px; // 日期间隔
+  }
 }
+
+.day-schedule {
+  .day-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px; // 增加与下方卡片的间距
+
+    .day-label {
+      font-size: 18px; // 增大字号
+      color: @text-color;
+      font-weight: 600; // 加粗
+      margin-right: 16px; // 与分割线间距
+      white-space: nowrap;
+    }
+
+    .divider {
+      flex: 1;
+      height: 1px;
+      // 使用渐变背景代替 hr
+      background: linear-gradient(to right, @border-color, transparent);
+    }
+  }
+
+  .items-grid { // transition-group 应用的元素
+    display: grid;
+    // 优化列定义，设置最小和最大宽度
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); // 稍微减小最小宽度
+    gap: 20px; // 调整卡片间距
+  }
+}
+
+// --- Item Card ---
+.item-card {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: @text-color;
+  background-color: @card-bg;
+  border-radius: @border-radius-card;
+  overflow: hidden; // 隐藏溢出的内容（如图片放大效果）
+  transition: all @transition-duration ease-out; // 平滑过渡
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); // 基础阴影
+
+  &:hover {
+    transform: translateY(-6px) scale(1.03); // 悬浮效果更明显
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45); // 悬浮阴影加深
+    z-index: 5; // 确保悬浮的卡片在最上层
+
+    .item-image {
+      transform: scale(1.1); // 图片轻微放大
+    }
+  }
+
+  .item-image-wrapper {
+    position: relative;
+    width: 100%;
+    // 使用 aspect-ratio 保持图片比例，如果浏览器支持的话
+    aspect-ratio: 3 / 4; // 常见的海报比例
+    // 如果不支持 aspect-ratio，可以使用 padding-top hack 或固定高度
+    // height: 210px; // 或者固定高度
+    border-radius: @border-radius-img @border-radius-img 0 0; // 图片顶部圆角
+    overflow: hidden;
+    background-color: #333; // 图片加载前的底色
+
+    .item-image {
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      transition: transform 0.4s ease-out, opacity 0.5s ease; // 图片过渡
+      opacity: 1; // 默认可见
+    }
+
+    .image-placeholder {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: @text-secondary;
+      font-size: 14px;
+      text-align: center;
+      pointer-events: none; // 不阻挡下方元素
+
+      .el-icon {
+         font-size: 36px; // 放大图标
+         margin-bottom: 8px;
+      }
+    }
+  }
+
+  .item-info {
+     padding: 10px 12px; // 调整内边距
+     flex-grow: 1; // 占据剩余空间，使卡片高度一致（如果需要）
+  }
+
+  .item-name {
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: left; // 左对齐
+    // 多行文字溢出显示省略号
+    display: -webkit-box;
+    -webkit-line-clamp: 2; // 最多显示 2 行
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-all; // 允许单词内换行
+    min-height: calc(1.4em * 2); // 保证至少两行的高度，防止抖动
+    color: @text-color; // 使用主要文字颜色
+  }
+}
+
+
+// --- Loading & No Results ---
+.loading-indicator,
+.no-results {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   padding: 40px 20px;
+   font-size: 16px;
+   color: @text-secondary;
+   width: 100%;
+   text-align: center;
+
+   .el-icon {
+     margin-right: 8px;
+     font-size: 20px;
+   }
+}
+
+// --- Transition Animations ---
+
+// 日期分组淡入淡出
+.day-fade-enter-active,
+.day-fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+.day-fade-enter-from,
+.day-fade-leave-to {
+  opacity: 0;
+}
+
+// 卡片项淡入 + 轻微上移
+.item-fade-enter-active {
+  transition: all 0.4s ease-out;
+  transition-delay: calc(0.05s * var(--el-transition-index, 0)); // 基础延迟 + 索引延迟 (需要JS配合设置 --el-transition-index)
+}
+.item-fade-leave-active {
+  transition: all 0.3s ease-in;
+  position: absolute; // 离开时脱离文档流，防止抖动
+  z-index: -1; // 确保在下方
+}
+.item-fade-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.item-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.9);
+}
+// 为了让 transition-group 的 move 生效，需要设置
+.item-fade-move {
+  transition: transform 0.5s ease;
+}
+
+
 </style>
