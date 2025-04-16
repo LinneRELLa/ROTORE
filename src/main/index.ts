@@ -1,8 +1,8 @@
 /*
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
- * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-04-01 10:11:53
+ * @LastEditors: Linne Rella 3223961933@qq.com
+ * @LastEditTime: 2025-04-16 20:42:54
  * @FilePath: \ElectronTorrent\src\main\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -368,6 +368,7 @@ const publicPath = app.isPackaged ? process.resourcesPath : app.getAppPath()
 import * as fs from 'fs'
 
 const configPath = join(publicPath, 'config/config.json')
+const FFPath = join(publicPath, 'ffmpeg')
 process.title = 'ROTORE'
 
 app.setName('ROTORE')
@@ -379,6 +380,11 @@ if (process.platform === 'win32') {
 ipcMain.handle('getPath', async () => {
   return configPath
 })
+
+ipcMain.handle('getFFPath', async () => {
+  return FFPath
+})
+
 
 //读取本地下载记录
 const DownloadStore = fs.readFileSync(join(publicPath, 'config/DownloadStore.json'), 'utf-8')
