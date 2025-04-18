@@ -1,10 +1,10 @@
 <!--
  * @Author: Linne Rella 3223961933@qq.com
  * @Date: 2025-03-20 18:08:34
- * @LastEditTime: 2025-04-18 16:26:03
+ * @LastEditTime: 2025-04-18 22:08:02
  * @FilePath: \electronTorrent\src\renderer\src\views\Download.vue
  * @Date: 2025-03-17 14:28:24
- * @LastEditors: chengp 3223961933@qq.com
+ * @LastEditors: Linne Rella 3223961933@qq.com
  * @LastEditTime: 2025-03-20 16:22:44
  * @FilePath: \ElectronTorrent\src\renderer\src\views\Download.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
@@ -487,18 +487,18 @@ function download(): void {
     return
   }
 
-  ClientStore.AlltorrentsStore.push({
-    infoHash: magUrl.value,
-    name: normalize(magUrl.value, 'dn') || magUrl.value,
-    magnetURI: magUrl.value,
-    initURL: magUrl.value,
-    fileSelected: false,
-    files: [],
-    selectedSize: 0,
-    selectedTotal: 0,
-    cleared: false,
-    error: ''
-  })
+  // ClientStore.AlltorrentsStore.push({
+  //   infoHash: magUrl.value,
+  //   name: normalize(magUrl.value, 'dn') || magUrl.value,
+  //   magnetURI: magUrl.value,
+  //   initURL: magUrl.value,
+  //   fileSelected: false,
+  //   files: [],
+  //   selectedSize: 0,
+  //   selectedTotal: 0,
+  //   cleared: false,
+  //   error: ''
+  // })
 
   window.electron.ipcRenderer.send('addTorrent', magUrl.value)
   window.electron.ipcRenderer.send('writeTorrent')
