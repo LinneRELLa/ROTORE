@@ -21,21 +21,19 @@
     "build:linux": "npm run build && electron-builder --linux"
   },
   "build": {
-    "extraResources": [
-      {
-        "from": "config/",
-        "to": "config/",
-        "filter": [
-          "**/*"
-        ]
-      },  {
-        "from": "ffmpeg/",
-        "to": "ffmpeg/",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
+    "extraResources": [{
+      "from": "config/",
+      "to": "config/",
+      "filter": [
+        "**/*"
+      ]
+    }, {
+      "from": "ffmpeg/",
+      "to": "ffmpeg/",
+      "filter": [
+        "**/*"
+      ]
+    }],
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
@@ -43,15 +41,12 @@
     "win": {
       "icon": "resources/x1.ico"
     },
-      "fileAssociations": [
-      {
-        "ext": "torrent",                 // 文件扩展名
-        "name": "Torrent 文件",            // 文件类型名称 (显示在系统属性中)
-        "description": "BitTorrent 种子文件", // 文件类型描述 (可选)
-        "role": "Viewer"                  // 应用程序角色 (Editor 或 Viewer，Viewer 可能更适合只打开不编辑的场景)
-        // "icon": "resources/torrent-icon.ico" // 可选: 指定 .torrent 文件的特定图标路径，如果省略，通常使用应用图标
-      }
-    ],
+    "fileAssociations": [{
+      "ext": "torrent",
+      "name": "Torrent 文件",
+      "description": "BitTorrent 种子文件",
+      "role": "Viewer"
+    }]
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",
