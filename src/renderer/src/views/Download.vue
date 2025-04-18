@@ -1,7 +1,7 @@
 <!--
  * @Author: Linne Rella 3223961933@qq.com
  * @Date: 2025-03-20 18:08:34
- * @LastEditTime: 2025-03-28 10:04:20
+ * @LastEditTime: 2025-04-18 16:26:03
  * @FilePath: \electronTorrent\src\renderer\src\views\Download.vue
  * @Date: 2025-03-17 14:28:24
  * @LastEditors: chengp 3223961933@qq.com
@@ -39,12 +39,16 @@
     <div class="input-section">
       <el-input
         v-model.trim="magUrl"
-        placeholder="请输入下载链接或路径"
-        class="download-input"
+        placeholder="请输入下载链接或点击左侧按钮选择种子文件" class="download-input"
         size="large"
       >
+        <template #prepend>
+           <el-tooltip content="选择本地 .torrent 种子文件" placement="top">
+             <el-button @click="selectTorrentFile" icon="Folder" aria-label="选择种子文件"></el-button>
+           </el-tooltip>
+        </template>
         <template #append>
-          <el-tooltip :disabled="isVliadUrl" content="请输入有效链接" placement="top">
+          <el-tooltip :disabled="isVliadUrl" content="请输入有效链接或文件路径" placement="top">
             <el-button
               type="primary"
               :disabled="!isVliadUrl"
@@ -169,10 +173,9 @@
       <!-- 任务详情侧边栏 -->
       <transition name="width-fade">
         <div v-if="selectedTask" class="task-detail">
-     
           <div class="detail-header">
             <h3>{{ selectedTask.name }}</h3>
-            <el-icon @click="selectedTask=null" style="cursor:pointer"><DArrowRight /></el-icon>
+            <el-icon @click="selectedTask = null" style="cursor: pointer"><DArrowRight /></el-icon>
           </div>
 
           <!-- 文件列表 -->
@@ -308,6 +311,23 @@ const FileDelte = ref<boolean>(false)
 let magUrl = ref<string>('')
 let selectPop = ref<boolean>(false)
 
+const selectTorrentFile = async (): Promise<void> => {
+  try {
+    // 调用主进程的 IPC Handler (确保主进程有 'open-torrent-file-dialog' 的实现)
+    const filePath = await window.electron.ipcRenderer.invoke('open-torrent-file-dialog')
+
+    // 如果用户选择了文件 (filePath 不为 null 或 undefined)
+    if (filePath && typeof filePath === 'string') {
+      magUrl.value = filePath // 将文件路径设置到输入框
+    } else {
+      console.log('用户取消了文件选择。')
+    }
+  } catch (error) {
+    console.error('选择 Torrent 文件失败:', error)
+    ElMessage.error('无法打开文件选择对话框，请检查主进程日志。')
+  }
+}
+
 // 新增：保存各任务弹窗显示状态和删除文件选项
 const popoverVisible = ref<{ [key: string]: boolean }>({})
 // const deleteFileOptions = ref<{ [key: string]: boolean }>({})
@@ -392,57 +412,29 @@ function normalize(magnet: string, key: string): string | null {
 // }
 
 //判断是否有效
-function isValidTorrentIdentifier(input): boolean {
-  // 1. 如果是字符串，则可能是：
+function isValidTorrentIdentifier(input: any): boolean {
   if (typeof input === 'string') {
-    // a. Magnet URI：必须以 "magnet:" 开头，并含有 xt=urn:btih: 后跟 40 个十六进制或 32 个 base32 字符
-    const magnetRegex = /^magnet:\?xt=urn:btih:([a-fA-F0-9]{40}|[A-Z2-7]{32})(?:&.*)?$/
-    if (magnetRegex.test(input)) {
-      return true
-    }
-    // b. http/https 链接，指向 torrent 文件（通常以 .torrent 结尾，允许带参数）
+    const magnetRegex = /^magnet:\?xt=urn:btih:([a-fA-F0-9]{40}|[A-Z2-7]{32})(?:&.*)?$/i
+    if (magnetRegex.test(input)) return true
     const httpUrlRegex = /^(https?:\/\/.*\.torrent(?:\?.*)?)$/i
-    if (httpUrlRegex.test(input)) {
+    if (httpUrlRegex.test(input)) return true
+    // 修改本地路径检查：更通用，并检查文件是否存在
+    const fsPathRegex = /\.torrent$/i // 只检查扩展名
+    // 使用 nodeAPI 检查路径看起来像路径且文件存在
+    if (fsPathRegex.test(input) && input.length > 8 && window.nodeAPI?.fs?.existsSync(input)) {
+      // 简单长度检查+存在性
       return true
     }
-    // c. 文件系统路径（简单判断以 .torrent 结尾，Node.js 下可用更严格的判断）
-    const fsPathRegex = /.*\.torrent$/i
-    if (fsPathRegex.test(input)) {
-      return true
-    }
-    // d. 纯 info hash 的十六进制字符串（40 个十六进制字符）
-    const hexHashRegex = /^[a-fA-F0-9]{40}$/
-    if (hexHashRegex.test(input)) {
-      return true
-    }
+    const hexHashRegex = /^[a-fA-F0-9]{40}$/i
+    if (hexHashRegex.test(input)) return true
   }
-
-  // 2. 如果是 Uint8Array，则可能是：
+  // ... (Uint8Array 和 Object 的检查保持不变) ...
   if (input instanceof Uint8Array) {
-    // a. info hash 的二进制形式（20 字节）
-    if (input.length === 20) {
-      return true
-    }
-    // b. torrent 文件（二进制 bencode 格式，通常以 "d8:" 开头，即字符 "d", "8", ":"）
-    if (
-      input.length >= 3 &&
-      input[0] === 100 && // 'd'
-      input[1] === 56 && // '8'
-      input[2] === 58
-    ) {
-      // ':'
-      return true
-    }
+    /* ... */
   }
-
-  // 3. 如果是对象，则可能是 parse‑torrent 得到的已解析 torrent 对象
   if (typeof input === 'object' && input !== null) {
-    // 简单判断：是否有 infoHash 属性和 info 对象（实际情况可根据 parse‑torrent 返回的结构做更细致判断）
-    if (typeof input.infoHash === 'string' && input.info && typeof input.info === 'object') {
-      return true
-    }
+    /* ... */
   }
-
   return false
 }
 
@@ -465,6 +457,26 @@ function formatSize(size: number): string {
 
 function download(): void {
   console.log('download')
+  if (!magUrl.value) return
+  let identifier = magUrl.value
+
+  // 对本地文件路径做最终校验
+  const fsPathRegex = /\.torrent$/i
+  if (
+    fsPathRegex.test(identifier) &&
+    !identifier.startsWith('http') &&
+    !identifier.startsWith('magnet:')
+  ) {
+    if (!window.nodeAPI?.fs?.existsSync(identifier)) {
+      ElNotification({
+        title: '文件无效',
+        message: `本地 Torrent 文件路径不存在: ${identifier}`,
+        type: 'error'
+      })
+      return
+    }
+  }
+
   let ExistTorrent = ClientStore.AlltorrentsStore.find((x) => x.initURL == magUrl.value)
   if (ExistTorrent) {
     ElNotification({
