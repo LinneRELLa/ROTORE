@@ -79,7 +79,7 @@ let done = ref<boolean>(false)
 let jidu = ref<string>('获取中')
 let info = ref<{ day: number; children: { 图床: string; 关键字: string; Name: string }[] }[]>([])
 let xingqi = ref<string[]>(['x', '周一', '周二', '周三', '周四', '周五', '周六', '周日'])
-
+const isLoading=ref(false)
 function formatJidu(jidu: string): string {
   return jidu.slice(0, 2) + '年' + (jidu.slice(2) == 0 ? '10月' : jidu.slice(2) + '月')
 }
@@ -88,7 +88,7 @@ function toload() {
   console.log('load')
   done.value = false
   let fangdou: NodeJS.Timeout | null = null
-
+  isLoading.value=true;
   return function (): void {
     if (fangdou) {
       clearTimeout(fangdou)
@@ -112,6 +112,7 @@ function toload() {
             info.value[x.DAY - 1].children.push(x)
           }
           console.log(info.value)
+          isLoading.value=false;
           nextTick(() => {
             observeImages()
           })
