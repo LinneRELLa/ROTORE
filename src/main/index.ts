@@ -539,9 +539,9 @@ ipcMain.handle('open-with-external-player', async (_event, encodedVideoPath, enc
   if (!playerPath || !fs.existsSync(playerPath)) {
     throw new Error('未设置有效或存在的外部播放器路径')
   }
-  if (!fs.existsSync(videoPath)) {
-    throw new Error(`视频文件不存在: ${videoPath}`)
-  }
+  // if (!fs.existsSync(videoPath)) {
+  //   throw new Error(`视频文件不存在: ${videoPath}`)
+  // }
   console.log(`尝试用外部播放器 "${playerPath}" 打开 "${videoPath}"`)
   return new Promise((resolve, reject) => {
     // Windows 下路径可能需要特殊处理？ 但通常 execFile 能处理
