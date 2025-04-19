@@ -2,7 +2,7 @@
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-14 08:36:44
  * @LastEditors: Linne Rella 3223961933@qq.com
- * @LastEditTime: 2025-03-26 21:01:18
+ * @LastEditTime: 2025-04-19 23:04:44
  * @FilePath: \ElectronTorrent\README.md
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -49,6 +49,11 @@
 - 拖拽种子文件以下载
 
 - 侧边栏功能自定义
+
+- 内嵌字幕播放处理（已在测试分支实现，需要进一步测试）
+<div>
+	<img src="https://github.com/LinneRELLa/ElectronTorrent/blob/main/resources/l2png" />
+</div>
 
 ## 开发环境
 
