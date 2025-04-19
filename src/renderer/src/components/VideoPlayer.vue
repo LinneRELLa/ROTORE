@@ -11,20 +11,12 @@
         >加载解码器...</el-tag
       >
       <el-tag
-        v-if="isProcessing"
+        v-if="isProcessingSubs || isDiscoveringSubtitles"
         type="warning"
         effect="light"
         size="small"
         style="margin-left: 10px"
-        >处理中 {{ processingProgress.toFixed(1) }}%...</el-tag
-      >
-      <el-tag
-        v-if="isPlayingWithMSE"
-        type="success"
-        effect="light"
-        size="small"
-        style="margin-left: 10px"
-        >MSE 播放中</el-tag
+        >{{ isDiscoveringSubtitles ? '扫描字幕...' : '提取字幕...' }}</el-tag
       >
       <el-icon class="close-btn" @click="closePlayer"><Close /></el-icon>
     </div>
@@ -41,7 +33,7 @@
       >
         <track
           v-if="subtitleUrl"
-          label="默认字幕"
+          label="选择的字幕"
           kind="subtitles"
           srclang="und"
           :src="subtitleUrl"
@@ -57,20 +49,30 @@
       />
     </div>
 
-    <div v-if="true" class="fallback-prompt">
-      <!-- <el-tooltip
-        content="使用内置MSE播放器 (可能需要处理时间，需显卡支持视频解码)"
-        placement="top"
+    <div class="controls-section subtitle-selection">
+      <el-select
+        v-model="selectedSubtitleIndex"
+        placeholder="选择字幕轨道"
+        size="small"
+        :disabled="isDiscoveringSubtitles || isProcessingSubs || availableSubtitles.length === 0"
+        @change="handleSubtitleSelection"
+        style="margin-right: 10px"
+        no-data-text="未扫描到字幕轨道"
       >
-        <el-button
-          type="primary"
-          :loading="isLoadingFfmpeg || isProcessing"
-          @click="tryMSEPlayback"
-        >
-          尝试内置播放 (MSE)
-          <el-icon><VideoPlay /></el-icon>
-        </el-button>
-      </el-tooltip> -->
+        <el-option label="无字幕" :value="-1"></el-option>
+        <el-option
+          v-for="sub in availableSubtitles"
+          :key="sub.index"
+          :label="sub.label"
+          :value="sub.index"
+        />
+      </el-select>
+      <el-button type="primary" @click="openSystemPlayer" size="small">
+        使用外部播放器打开
+      </el-button>
+    </div>
+
+    <div v-if="showFallbackOptions" class="fallback-prompt">
       <el-button type="primary" @click="openSystemPlayer"> 使用外部播放器打开 </el-button>
     </div>
   </div>
@@ -81,29 +83,45 @@ import { ElNotification, ElMessage } from 'element-plus'
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useFile } from '@renderer/hooks/useFile'
 import { FFmpeg } from '@ffmpeg/ffmpeg'
-// import { fetchFile, toBlobURL } from '@ffmpeg/util' // 可能不再需要
 
 const { ConfigStore } = useFile()
 
+// --- 接口定义 ---
+interface SubtitleTrack {
+  index: number
+  language?: string
+  codec?: string
+  label: string
+}
+
+// --- Props 和 Emits ---
 const props = defineProps({
-  videoUrl: String, // 本地文件路径
+  videoUrl: String,
   fileName: String
 })
 const emit = defineEmits(['close'])
 
+// --- Refs ---
 const videoEl = ref<HTMLVideoElement>()
 const ffmpegRef = ref<FFmpeg | null>(null)
-const subtitleUrl = ref<string | null>(null) // VTT Blob 的 Object URL
-const vttBlobUrl = ref<string | null>(null) // 跟踪 VTT URL 以便释放
+const subtitleUrl = ref<string | null>(null)
+const vttBlobUrl = ref<string | null>(null)
 
-// --- 状态相关的 Ref ---
-const isLoadingFfmpeg = ref(false) // 仅用于加载 FFmpeg 处理字幕
-const isProcessingSubs = ref(false) // 是否正在处理字幕
-// const isPlayingWithMSE = ref(false) // 不再需要
+// --- 状态 Refs ---
+const isLoadingFfmpeg = ref(false)
+const isDiscoveringSubtitles = ref(false)
+const isProcessingSubs = ref(false)
 const errorMessage = ref<string | null>(null)
-const showFallbackOptions = ref(false) // 初始不显示，仅在出错或加载字幕时考虑
+const showFallbackOptions = ref(false)
 
-// --- FFmpeg 加载逻辑 (保持不变，仅用于字幕) ---
+// --- 字幕相关状态 Refs ---
+const availableSubtitles = ref<SubtitleTrack[]>([])
+const selectedSubtitleIndex = ref<number | null>(null)
+
+// --- 新增：用于收集所有 FFmpeg 日志的 Ref ---
+const ffmpegLogs = ref<string[]>([])
+
+// --- FFmpeg 加载逻辑 (已修改：在此处设置日志监听器) ---
 async function loadFfmpeg(): Promise<boolean> {
   if (ffmpegRef.value?.loaded) {
     console.log('FFmpeg 实例已加载。')
@@ -111,18 +129,21 @@ async function loadFfmpeg(): Promise<boolean> {
   }
 
   isLoadingFfmpeg.value = true
-  errorMessage.value = null // 清除旧错误
+  errorMessage.value = null
   let coreURL: string | undefined
   let wasmURL: string | undefined
 
   try {
     const ffmpeg = new FFmpeg()
-    // 简化日志处理，仅用于调试字幕提取
-    ffmpeg.on('log', ({ message }) => console.log('[FFmpeg Subtitle Log]', message))
-    // 进度不再重要，可以移除或保留
-    // ffmpeg.on('progress', ({ progress }) => { /* ... */ })
 
-    // --- 从本地文件加载 FFmpeg ---
+    // !!! 在这里一次性添加日志监听器 !!!
+    ffmpegLogs.value = [] // 初始化或清空日志数组
+    ffmpeg.on('log', ({ message }) => {
+      // console.log('[FFmpeg Log]', message); // 可以取消注释用于调试
+      ffmpegLogs.value.push(message) // 将日志添加到共享数组中
+    })
+
+    // --- 获取 FFmpeg 核心文件路径 ---
     const ipcRenderer = window.electron.ipcRenderer
     const FFPath = await ipcRenderer.invoke('getFFPath')
     if (!FFPath || typeof FFPath !== 'string') {
@@ -130,138 +151,225 @@ async function loadFfmpeg(): Promise<boolean> {
     }
     console.log(`[渲染进程] FFmpeg 路径: ${FFPath}`)
 
+    // --- 检查 Node API ---
     if (!window.nodeAPI?.path?.join || !window.nodeAPI?.fs?.readFile) {
       throw new Error('预加载脚本未正确暴露 nodeAPI.path.join 或 nodeAPI.fs.readFile。')
     }
     const coreJsFullPath = window.nodeAPI.path.join(FFPath, 'ffmpeg-core.js')
     const wasmFullPath = window.nodeAPI.path.join(FFPath, 'ffmpeg-core.wasm')
 
+    // --- 读取核心文件 ---
     console.log('[渲染进程] 读取 FFmpeg 核心文件...')
     const coreJsData: Buffer = await window.nodeAPI.fs.readFile(coreJsFullPath)
     const wasmData: Buffer = await window.nodeAPI.fs.readFile(wasmFullPath)
 
+    // --- 创建 Blob URL ---
     console.log('[渲染进程] 创建 FFmpeg Blob URL...')
     const coreBlob = new Blob([coreJsData], { type: 'text/javascript' })
     const wasmBlob = new Blob([wasmData], { type: 'application/wasm' })
     coreURL = URL.createObjectURL(coreBlob)
     wasmURL = URL.createObjectURL(wasmBlob)
 
+    // --- 加载 FFmpeg ---
     console.log('[渲染进程] 加载 FFmpeg...')
     await ffmpeg.load({ coreURL, wasmURL })
 
     ffmpegRef.value = ffmpeg
-    console.log('[渲染进程] FFmpeg 成功加载 (仅用于字幕)。')
+    console.log('[渲染进程] FFmpeg 成功加载，并已设置日志监听器。')
     return true
   } catch (error: any) {
     console.error('[渲染进程] 加载 FFmpeg 失败:', error)
     errorMessage.value = `加载 FFmpeg 核心失败: ${error.message || String(error)}`
     return false
   } finally {
+    // --- 释放 Blob URL ---
     if (coreURL) URL.revokeObjectURL(coreURL)
     if (wasmURL) URL.revokeObjectURL(wasmURL)
     isLoadingFfmpeg.value = false
   }
 }
 
-// --- 新增：仅提取字幕的函数 ---
-async function extractAndSetSubtitles(inputVideoPath: string) {
+// --- 扫描视频文件中的字幕轨道 (已修改：使用共享日志) ---
+async function discoverSubtitleTracks(inputVideoPath: string) {
   if (!ffmpegRef.value || !ffmpegRef.value.loaded) {
-    console.warn('FFmpeg 未加载，无法提取字幕。')
-    ElNotification.warning({
-      title: '提示',
-      message: 'FFmpeg尚未加载完成，无法提取字幕。',
-      duration: 3000
-    })
+    console.warn('FFmpeg 未加载，无法扫描字幕。')
     return
   }
-  if (isProcessingSubs.value) return // 防止重复执行
+  if (isDiscoveringSubtitles.value) return
 
-  isProcessingSubs.value = true
-  errorMessage.value = null // 清除字幕处理前的错误
-  console.log('开始提取字幕...')
+  isDiscoveringSubtitles.value = true
+  availableSubtitles.value = []
+  selectedSubtitleIndex.value = null
+  errorMessage.value = null
+  console.log('开始扫描字幕轨道...')
 
-  const inputFileName = `sub-input-${Date.now()}.mkv` // 虚拟文件名
-  const vttFileName = `subtitle-${Date.now()}.vtt`
+  const uniqueInputName = `discover-${Date.now()}.tmp`
 
   try {
-    // 1. 读取视频文件数据 (FFmpeg wasm 需要文件在 VFS 中)
-    console.log(`为提取字幕，读取文件: ${inputVideoPath}`)
-    // 确保路径是有效的本地路径
+    // !!! 清空之前的日志记录，准备接收本次操作的日志 !!!
+    ffmpegLogs.value = []
+
+    // --- 读取视频文件并写入 VFS ---
     const inputData: Buffer = await window.nodeAPI.fs.readFile(inputVideoPath)
     const inputUint8Array = new Uint8Array(
       inputData.buffer,
       inputData.byteOffset,
       inputData.byteLength
     )
+    await ffmpegRef.value.writeFile(uniqueInputName, inputUint8Array)
 
-    // 2. 将文件写入 FFmpeg VFS
+    // --- 执行 FFmpeg 命令获取信息 ---
+    try {
+      // 此命令预期会因 "-f null -" 出错，但流信息会在错误前打印到日志
+      await ffmpegRef.value.exec(['-i', uniqueInputName, '-t', '0.1', '-f', 'null', '-'])
+    } catch (execError) {
+      console.log('FFmpeg 信息命令完成（预期错误）。正在解析日志以查找字幕。')
+    }
+
+    // !!! 使用共享的 ffmpegLogs 进行解析 !!!
+    const subs: SubtitleTrack[] = []
+    const streamRegex = /^\s*Stream #\d+:(\d+)(?:\((\w+)\))?:\s+Subtitle:\s+(\w+)/
+    let subtitleCounter = 0 // <--- 初始化字幕流计数器
+
+    for (const line of ffmpegLogs.value) {
+      // 使用全局日志数组
+      const match = line.match(streamRegex)
+      if (match) {
+        // const index = parseInt(match[1], 10)
+        const language = match[2] || undefined
+        const codec = match[3] || undefined
+        const label = `轨道 ${subtitleCounter}${language ? ` (${language})` : ''}${codec ? `: ${codec}` : ''}`
+        subs.push({ index: subtitleCounter, language, codec, label })
+        console.log(`发现字幕轨道: Index=${subtitleCounter}, Lang=${language}, Codec=${codec}`)
+        subtitleCounter++
+      }
+    }
+
+    availableSubtitles.value = subs // 更新UI列表
+
+    // --- 处理扫描结果 ---
+    if (subs.length === 0) {
+      ElNotification.info({
+        title: '无内嵌字幕',
+        message: '视频文件中未扫描到内嵌字幕轨道。',
+        duration: 3000
+      })
+      selectedSubtitleIndex.value = -1
+    } else {
+      selectedSubtitleIndex.value = -1 // 默认选择 "无字幕"
+    }
+  } catch (error: any) {
+    console.error('扫描字幕轨道失败:', error)
+    ElNotification.error({
+      title: '扫描字幕失败',
+      message: `无法扫描字幕轨道: ${error.message || String(error)}`,
+      duration: 4000
+    })
+    errorMessage.value = '扫描字幕轨道时出错。'
+    selectedSubtitleIndex.value = -1
+  } finally {
+    // --- 清理 VFS 中的临时文件 ---
+    try {
+      if (ffmpegRef.value) {
+        await ffmpegRef.value.deleteFile(uniqueInputName)
+      }
+    } catch (cleanupError) {
+      console.warn('清理字幕扫描的虚拟文件时出错:', cleanupError)
+    }
+    isDiscoveringSubtitles.value = false // 结束扫描状态
+    console.log('字幕扫描流程结束。')
+    // 可以选择在此处再次清空日志： ffmpegLogs.value = []; 避免日志累积过大
+  }
+}
+
+// --- 提取指定索引的字幕轨道并设置为 VTT ---
+async function extractAndSetSubtitles(inputVideoPath: string, subtitleIndex: number) {
+  if (!ffmpegRef.value || !ffmpegRef.value.loaded) {
+    console.warn('FFmpeg 未加载，无法提取字幕。')
+    return
+  }
+  if (isProcessingSubs.value) {
+    console.warn('已经在处理字幕，请稍候...')
+    return
+  }
+
+  isProcessingSubs.value = true
+  errorMessage.value = null
+  console.log(`开始提取字幕轨道索引: ${subtitleIndex}...`)
+
+  clearSubtitleTrack() // 清理旧字幕
+
+  const inputFileName = `sub-input-${Date.now()}.mkv`
+  const vttFileName = `subtitle-${Date.now()}.vtt`
+
+  try {
+    // --- 写入 VFS ---
+    const inputData: Buffer = await window.nodeAPI.fs.readFile(inputVideoPath)
+    const inputUint8Array = new Uint8Array(
+      inputData.buffer,
+      inputData.byteOffset,
+      inputData.byteLength
+    )
     await ffmpegRef.value.writeFile(inputFileName, inputUint8Array)
-    console.log(`已将 ${inputFileName} 写入虚拟文件系统 (用于字幕提取)。`)
 
-    // 3. 定义并执行 FFmpeg 字幕提取命令
+    // --- 执行提取命令 ---
+    // 清空日志，以便观察本次提取操作的日志（如果需要）
+    // ffmpegLogs.value = [];
+    ffmpegLogs.value = [] // 清空全局日志数组
     const ffmpegSubArgs = [
+      '-loglevel',
+      'verbose', // <--- 添加日志级别参数 ('verbose' 或 'debug')
       '-i',
       inputFileName,
       '-map',
-      '0:s:0?', // 映射第一个字幕流 (如果存在)
+      `0:s:${subtitleIndex}?`,
       '-c:s',
-      'webvtt', // 转换为 VTT 格式
+      'webvtt',
       vttFileName
     ]
     console.log('执行 FFmpeg 字幕提取命令:', ffmpegSubArgs.join(' '))
     await ffmpegRef.value.exec(ffmpegSubArgs)
-    console.log('FFmpeg 字幕提取完成。')
+    console.log(`FFmpeg 字幕轨道 ${subtitleIndex} 提取完成。`, ffmpegLogs.value)
 
-    // 4. 从 VFS 读取 VTT 字幕文件
-    const vttDataUint8Array = await ffmpegRef.value.readFile(vttFileName)
-    console.log(`从虚拟文件系统读取 ${vttFileName} (${vttDataUint8Array.length} 字节).`)
-
-    // 5. 创建 VTT Blob URL
-    const vttBlob = new Blob([vttDataUint8Array], { type: 'text/vtt' })
-    // 清理旧的 VTT Blob URL (如果存在)
-    if (vttBlobUrl.value) {
-      URL.revokeObjectURL(vttBlobUrl.value)
+    try {
+      console.log('尝试列出 VFS 根目录内容...')
+      const files = await ffmpegRef.value.listDir('.') // 列出根目录 '.'
+      console.log('VFS 根目录内容:', files)
+      // 检查 VTT 文件是否在列表中
+      const vttFileExists = files.some((f) => f.name === vttFileName && !f.isDir)
+      console.log(`目标 VTT 文件 (${vttFileName}) 是否存在于列表: ${vttFileExists}`)
+    } catch (listDirError) {
+      console.error('列出 VFS 目录时出错:', listDirError)
     }
+
+    // --- 读取 VTT 文件 ---
+    const vttDataUint8Array = await ffmpegRef.value.readFile(vttFileName)
+
+    // --- 创建 Blob URL ---
+    const vttBlob = new Blob([vttDataUint8Array], { type: 'text/vtt' })
     vttBlobUrl.value = URL.createObjectURL(vttBlob)
-    subtitleUrl.value = vttBlobUrl.value // 更新响应式 ref 以供 <track> 元素使用
+    subtitleUrl.value = vttBlobUrl.value
+
     console.log('字幕 VTT Blob URL 已创建:', subtitleUrl.value)
 
-    // 6. 尝试自动启用字幕轨道
-    await nextTick() // 等待 DOM 更新 <track> 标签
-    if (videoEl.value?.textTracks && videoEl.value.textTracks.length > 0) {
-      try {
-        videoEl.value.textTracks[0].mode = 'showing'
-        console.log('尝试默认启用字幕轨道。')
-      } catch (trackError) {
-        console.warn('设置字幕轨道模式时出错:', trackError)
-      }
-    } else {
-      console.warn('字幕轨道未找到或尚未加载。')
-    }
+    // --- 尝试启用字幕 ---
+    await nextTick()
+    enableSubtitleTrack()
   } catch (subError: any) {
-    console.warn('无法提取字幕:', subError)
-    // 如果错误包含 "Subtitle stream not found"，则明确提示
-    if (String(subError.message).includes('Subtitle stream not found')) {
-      ElNotification.info({
-        title: '无内嵌字幕',
-        message: '视频文件中未找到内嵌字幕。',
-        duration: 3000
-      })
-    } else {
-      ElNotification.warning({
-        title: '字幕提取失败',
-        message: '未能提取内嵌字幕，将无字幕播放。',
-        duration: 3000
-      })
-    }
-    subtitleUrl.value = null // 确保没有指向无效 URL 的 track
-    // 字幕提取失败不应设置全局错误状态，允许视频继续播放
+    console.error(`提取字幕轨道 ${subtitleIndex} 失败:`, subError)
+    ElNotification.error({
+      title: '字幕提取失败',
+      message: `无法提取所选字幕轨道 (${subtitleIndex})。 ${subError.message || String(subError)}`,
+      duration: 4000
+    })
+    clearSubtitleTrack() // 提取失败也要清理
   } finally {
-    // 7. 清理 VFS 中的文件
+    // --- 清理 VFS ---
     try {
-      await ffmpegRef.value.deleteFile(inputFileName)
-      await ffmpegRef.value.deleteFile(vttFileName)
-      console.log('字幕提取相关的虚拟文件已清理。')
+      if (ffmpegRef.value) {
+        await ffmpegRef.value.deleteFile(inputFileName)
+        await ffmpegRef.value.deleteFile(vttFileName)
+      }
     } catch (cleanupError) {
       console.warn('清理字幕提取的虚拟文件时出错:', cleanupError)
     }
@@ -270,12 +378,75 @@ async function extractAndSetSubtitles(inputVideoPath: string) {
   }
 }
 
+// --- 辅助函数 - 清除当前字幕轨道 ---
+function clearSubtitleTrack() {
+  if (vttBlobUrl.value) {
+    URL.revokeObjectURL(vttBlobUrl.value)
+    console.log('旧的 VTT Blob URL 已撤销:', vttBlobUrl.value)
+    vttBlobUrl.value = null
+  }
+  subtitleUrl.value = null
+
+  if (videoEl.value?.textTracks) {
+    try {
+      for (let i = 0; i < videoEl.value.textTracks.length; i++) {
+        if (videoEl.value.textTracks[i].kind === 'subtitles') {
+          videoEl.value.textTracks[i].mode = 'disabled'
+        }
+      }
+    } catch (e) {
+      console.warn('尝试禁用字幕轨道时出错:', e)
+    }
+  }
+}
+
+// --- 辅助函数 - 启用当前字幕轨道 ---
+async function enableSubtitleTrack() {
+  await nextTick()
+  if (videoEl.value?.textTracks && videoEl.value.textTracks.length > 0) {
+    let trackSet = false
+    for (let i = videoEl.value.textTracks.length - 1; i >= 0; i--) {
+      if (videoEl.value.textTracks[i].kind === 'subtitles') {
+        try {
+          videoEl.value.textTracks[i].mode = 'showing'
+          console.log(`尝试启用字幕轨道 ${i} (mode=showing).`)
+          trackSet = true
+          break
+        } catch (trackError) {
+          console.warn('设置字幕轨道模式时出错:', trackError)
+          break
+        }
+      }
+    }
+    if (!trackSet) {
+      console.warn('未能找到或启用目标字幕轨道。')
+    }
+  } else {
+    console.warn('视频 TextTracks 不可用或为空，无法自动启用字幕。')
+  }
+}
+
+// --- 处理字幕选择变化的事件处理器 ---
+async function handleSubtitleSelection(selectedIndex: number | null | string) {
+  const index = typeof selectedIndex === 'string' ? parseInt(selectedIndex, 10) : selectedIndex
+  console.log(`用户选择字幕轨道索引: ${index}`)
+  selectedSubtitleIndex.value = index
+
+  clearSubtitleTrack() // 立即移除旧字幕
+
+  if (index !== null && index >= 0 && props.videoUrl) {
+    await extractAndSetSubtitles(props.videoUrl, index) // 提取新选择的字幕
+  } else {
+    console.log('已选择 "无字幕" 或索引无效，不提取新字幕。')
+  }
+}
+
 // --- 初始化播放器设置 ---
 async function initializePlayer(videoPath: string) {
   console.log('初始化播放器设置...')
-  resetPlayerState() // 开始前重置状态
+  resetPlayerState()
   errorMessage.value = null
-  showFallbackOptions.value = false // 初始隐藏
+  showFallbackOptions.value = false
 
   if (!videoEl.value) {
     errorMessage.value = '视频播放器元素尚未准备好。'
@@ -283,50 +454,47 @@ async function initializePlayer(videoPath: string) {
   }
 
   try {
-    // 1. 设置视频源 (尝试直接使用路径)
-    // 注意：在 Electron 中，直接使用本地路径可能需要 'file://' 协议
-    // 确保 videoPath 是绝对路径
-    // const videoSrc = `file://${videoPath.replace(/\\/g, '/')}`; // 转换为 file URL
-    // 或者，如果 preload 脚本暴露了转换方法:
-    // const videoSrc = await window.electron.ipcRenderer.invoke('get-file-url', videoPath);
-
-    // **最简单的方式（如果Electron配置允许）可能是直接用原始路径**
-    // 需要在主进程配置 BrowserWindow 时可能有 `webPreferences: { webSecurity: false }` (不推荐)
-    // 或者更好地处理 `file://` 协议。我们先假设直接路径能工作或由Electron正确处理。
+    // 1. 设置视频源
     console.log(`设置 video src 为: ${videoPath}`)
     videoEl.value.src = videoPath
-    // 监听 video 元素的 canplay 事件，表示视频可以开始播放了
     videoEl.value.oncanplay = () => {
       console.log('视频已准备好播放 (canplay 事件)。')
-      // 可以在这里取消静音等操作，如果需要的话
-      // videoEl.value.muted = false;
     }
 
-    // 2. 加载 FFmpeg (仅用于字幕)
-    const ffmpegLoaded = await loadFfmpeg()
+    // 2. 加载 FFmpeg
+    const ffmpegLoaded = await loadFfmpeg() // loadFfmpeg 内部已设置好日志监听
 
-    // 3. 如果 FFmpeg 加载成功，则尝试提取字幕
+    // 3. 扫描字幕
     if (ffmpegLoaded) {
-      // 异步执行，不阻塞播放器初始化
-      extractAndSetSubtitles(videoPath).catch((err) => {
-        console.error('后台提取字幕时发生未捕获错误:', err)
-        // 可以在这里添加额外的错误处理逻辑，如果需要
+      discoverSubtitleTracks(videoPath).catch((err) => {
+        // 异步扫描
+        console.error('后台扫描字幕时发生未捕获错误:', err)
+        ElNotification.warning({
+          title: '警告',
+          message: '扫描字幕轨道时遇到问题。',
+          duration: 3000
+        })
+        availableSubtitles.value = []
+        selectedSubtitleIndex.value = -1
       })
     } else {
+      // FFmpeg 加载失败
       ElNotification.error({
         title: 'FFmpeg 加载失败',
-        message: '无法加载 FFmpeg，将不能提取内嵌字幕。',
+        message: '无法加载 FFmpeg，将不能扫描或提取内嵌字幕。',
         duration: 4000
       })
+      availableSubtitles.value = []
+      selectedSubtitleIndex.value = -1
     }
   } catch (error: any) {
     console.error('初始化播放器时出错:', error)
     errorMessage.value = `无法加载视频: ${error.message}`
-    showFallbackOptions.value = true // 显示回退选项
+    showFallbackOptions.value = true
   }
 }
 
-// --- 视频错误处理 ---
+// --- 视频错误处理 (未改变) ---
 function handleVideoError(event: Event) {
   const video = event.target as HTMLVideoElement
   let errorText = '未知视频错误'
@@ -340,10 +508,10 @@ function handleVideoError(event: Event) {
         errorText = '网络错误导致视频加载失败。'
         break
       case MediaError.MEDIA_ERR_DECODE:
-        errorText = '视频解码错误 - 文件可能已损坏或其编码不被此环境支持。'
+        errorText = '视频解码错误 - 文件可能已损坏或编码不支持。'
         break
       case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-        errorText = '视频源格式不支持。Electron/浏览器无法直接播放此文件。'
+        errorText = '视频源格式不支持。'
         break
       default:
         errorText = `发生未知视频错误 (Code: ${video.error.code})。`
@@ -351,49 +519,41 @@ function handleVideoError(event: Event) {
   }
   console.error('Video 元素错误:', errorText)
   errorMessage.value = errorText
-  // 发生严重视频错误时，显示回退选项
   showFallbackOptions.value = true
-  // 不需要重置播放器状态，因为视频本身加载失败了
 }
 
-// --- 关闭播放器 ---
+// --- 关闭播放器 (未改变) ---
 function closePlayer() {
   console.log('请求关闭播放器...')
-  resetPlayerState() // 清理资源
+  resetPlayerState()
   emit('close')
 }
 
-// --- 重置播放器状态 (简化版) ---
+// --- 重置播放器状态 (已更新) ---
 function resetPlayerState() {
   console.log('正在重置播放器状态...')
 
-  // 暂停视频并重置 src
   if (videoEl.value) {
     videoEl.value.pause()
-    videoEl.value.removeAttribute('src') // 移除 src
-    videoEl.value.load() // 请求浏览器重置 video 元素
-    videoEl.value.oncanplay = null // 移除旧的事件监听器
-    // 移除可能存在的错误监听器上的额外处理（如果需要）
+    videoEl.value.removeAttribute('src')
+    videoEl.value.load()
+    videoEl.value.oncanplay = null
     console.log('Video 元素已重置。')
   }
 
-  // 释放 VTT Blob URL
-  if (vttBlobUrl.value) {
-    URL.revokeObjectURL(vttBlobUrl.value)
-    console.log('VTT Blob URL 已撤销:', vttBlobUrl.value)
-    vttBlobUrl.value = null
-  }
-  subtitleUrl.value = null // 清除字幕 URL ref
+  clearSubtitleTrack() // 清理字幕状态和 URL
+  availableSubtitles.value = []
+  selectedSubtitleIndex.value = null
 
-  // 清理 FFmpeg 实例引用（但不终止，终止在 unmount 时进行）
-  // ffmpegRef.value = null; // 不在这里清除，unmount时处理
+  errorMessage.value = null
+  isProcessingSubs.value = false
+  isDiscoveringSubtitles.value = false
+  // ffmpegLogs.value = []; // 可以在这里清空累积的日志，如果需要的话
 
-  errorMessage.value = null // 清除错误信息
-  isProcessingSubs.value = false // 重置字幕处理状态
   console.log('播放器状态重置完成。')
 }
 
-// --- 外部播放器逻辑 (保持不变) ---
+// --- 外部播放器逻辑 (未改变) ---
 const openSystemPlayer = async (): Promise<void> => {
   if (!props.videoUrl) {
     ElMessage.error('视频路径无效')
@@ -416,73 +576,87 @@ const openSystemPlayer = async (): Promise<void> => {
       props.videoUrl,
       ConfigStore.PathConfig.playerPath
     )
-    ElNotification.success({
-      title: '成功',
-      message: `正在使用外部播放器播放`,
-      duration: 2000
-    })
+    ElNotification.success({ title: '成功', message: `正在使用外部播放器播放`, duration: 2000 })
   } catch (err: any) {
-    ElNotification.error({
-      title: '播放失败',
-      message: err.message || String(err),
-      duration: 5000
-    })
+    ElNotification.error({ title: '播放失败', message: err.message || String(err), duration: 5000 })
   }
 }
 
-// --- 生命周期钩子 ---
+// --- 生命周期钩子 (已更新) ---
 onMounted(() => {
   if (props.videoUrl) {
-    initializePlayer(props.videoUrl) // 组件挂载后直接尝试初始化
+    initializePlayer(props.videoUrl)
   } else {
     errorMessage.value = '未提供视频文件路径。'
     showFallbackOptions.value = true
+    availableSubtitles.value = []
+    selectedSubtitleIndex.value = -1
   }
 })
 
 onBeforeUnmount(() => {
   console.log('组件即将卸载，执行最终清理...')
-  resetPlayerState() // 清理状态和 VTT URL
-  // 终止 FFmpeg 实例
+  resetPlayerState()
+
   if (ffmpegRef.value && ffmpegRef.value.loaded) {
     console.log('在卸载时终止 FFmpeg 实例...')
     try {
-      ffmpegRef.value.terminate()
-      console.log('FFmpeg 实例已终止。')
+      // ffmpegRef.value.terminate(); // 酌情取消注释
+      console.log('FFmpeg 实例引用已清除。')
     } catch (e) {
-      console.warn('卸载组件时终止 ffmpeg 实例出错:', e)
+      console.warn('卸载组件时终止/清理 ffmpeg 实例引用出错:', e)
     }
   }
-  ffmpegRef.value = null // 清除引用
+  ffmpegRef.value = null
 })
 
-// 监听 videoUrl 变化
+// --- 监听 videoUrl 变化 (逻辑未变) ---
 watch(
   () => props.videoUrl,
   (newUrl, oldUrl) => {
     if (newUrl && newUrl !== oldUrl) {
       console.log('视频 URL 已更改，重新初始化播放器。')
-      initializePlayer(newUrl) // 使用新 URL 重新初始化
+      initializePlayer(newUrl)
     } else if (!newUrl && oldUrl) {
-      // 如果 URL 变成无效，则重置
       resetPlayerState()
       errorMessage.value = '视频文件路径已移除。'
     }
   }
 )
 </script>
+
 <style scoped lang="less">
-/* 如果需要，可以为加载/错误状态添加样式 */
+/* 控制区域样式 */
+.controls-section {
+  padding: 8px 16px;
+  background: #2a2a2a;
+  border-top: 1px solid #444;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.subtitle-selection .el-select {
+  width: 200px;
+}
+
+/* 基础播放器样式 */
 .simple-player {
-  /* ... 现有样式 ... */
-  background-color: #222; /* 稍暗的背景色 */
+  background-color: #222;
   color: #eee;
   border-radius: 8px;
   overflow: hidden;
   max-width: 90vw;
-  width: 800px; /* 或你偏好的宽度 */
+  width: 800px;
+  display: flex;
+  flex-direction: column;
+  height: 600px; /* Adjust as needed */
+  max-height: 85vh;
 }
 
+/* 播放器头部样式 */
 .player-header {
   display: flex;
   justify-content: space-between;
@@ -490,15 +664,18 @@ watch(
   padding: 10px 16px;
   background: #333;
   border-bottom: 1px solid #444;
+  flex-shrink: 0;
+
   h3 {
     margin: 0;
     font-size: 1em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: calc(100% - 150px); /* 根据按钮/图标大小调整 */
-    color: #eee; /* 确保标题颜色可见 */
+    max-width: calc(100% - 200px);
+    color: #eee;
   }
+
   .el-tag {
     margin-left: 8px;
   }
@@ -512,18 +689,28 @@ watch(
   }
 }
 
+/* 视频容器样式 */
 .video-container {
-  position: relative; /* 如果需要在视频上叠加内容，则需要 */
-}
-
-.video-element {
-  display: block; /* 防止下方出现额外空白 */
-  width: 100%;
-  /* height: 450px; */ /* 考虑使用 aspect-ratio 或 max-height */
-  max-height: calc(80vh - 50px); /* 示例：基于视口限制最大高度 */
+  position: relative;
+  flex-grow: 1;
   background: black;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
 }
 
+/* 视频元素样式 */
+.video-element {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain; /* 保持宽高比 */
+}
+
+/* 回退选项样式 */
 .fallback-prompt {
   padding: 1rem 2rem;
   text-align: center;
@@ -532,11 +719,16 @@ watch(
   display: flex;
   gap: 1rem;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-/* 视频下方错误信息的样式 */
+/* 错误提示样式 */
 .el-alert {
-  margin: 10px;
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 10;
   border-radius: 4px;
 }
 </style>
