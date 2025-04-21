@@ -1,10 +1,10 @@
 <!--
  * @Author: Linne Rella 3223961933@qq.com
  * @Date: 2025-03-20 18:08:34
- * @LastEditTime: 2025-04-18 22:08:02
+ * @LastEditTime: 2025-04-21 09:38:25
  * @FilePath: \electronTorrent\src\renderer\src\views\Download.vue
  * @Date: 2025-03-17 14:28:24
- * @LastEditors: Linne Rella 3223961933@qq.com
+ * @LastEditors: chengp 3223961933@qq.com
  * @LastEditTime: 2025-03-20 16:22:44
  * @FilePath: \ElectronTorrent\src\renderer\src\views\Download.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
@@ -39,13 +39,18 @@
     <div class="input-section">
       <el-input
         v-model.trim="magUrl"
-        placeholder="请输入下载链接或点击左侧按钮选择种子文件" class="download-input"
+        placeholder="请输入下载链接或点击左侧按钮选择种子文件"
+        class="download-input"
         size="large"
       >
         <template #prepend>
-           <el-tooltip content="选择本地 .torrent 种子文件" placement="top">
-             <el-button @click="selectTorrentFile" icon="Folder" aria-label="选择种子文件"></el-button>
-           </el-tooltip>
+          <el-tooltip content="选择本地 .torrent 种子文件" placement="top">
+            <el-button
+              @click="selectTorrentFile"
+              icon="Folder"
+              aria-label="选择种子文件"
+            ></el-button>
+          </el-tooltip>
         </template>
         <template #append>
           <el-tooltip :disabled="isVliadUrl" content="请输入有效链接或文件路径" placement="top">
@@ -487,7 +492,7 @@ function download(): void {
     return
   }
 
-  ClientStore.AlltorrentsStore.push({
+  const toadd = {
     infoHash: magUrl.value,
     name: normalize(magUrl.value, 'dn') || magUrl.value,
     magnetURI: magUrl.value,
@@ -498,8 +503,9 @@ function download(): void {
     selectedTotal: 0,
     cleared: false,
     error: ''
-  })
-
+  }
+  ClientStore.AlltorrentsStore.push(toadd)
+  selectFile(toadd)
   window.electron.ipcRenderer.send('addTorrent', magUrl.value)
   window.electron.ipcRenderer.send('writeTorrent')
 }

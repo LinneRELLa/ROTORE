@@ -72,9 +72,9 @@
       </el-button>
     </div>
 
-    <div v-if="showFallbackOptions" class="fallback-prompt">
+    <!-- <div v-if="showFallbackOptions" class="fallback-prompt">
       <el-button type="primary" @click="openSystemPlayer"> 使用外部播放器打开 </el-button>
-    </div>
+    </div> -->
   </div>
 </template>
 
