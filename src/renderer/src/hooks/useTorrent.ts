@@ -105,7 +105,7 @@ export function useTorrent(): {
 
         // 1. 建立服务端任务 Map (优先用 infoHash 做 key)
         tasksFromServer.forEach((serverTask) => {
-          const key = serverTask.infoHash || serverTask.initURL
+          const key = serverTask.initURL || serverTask.infoHash
           if (key) {
             serverTaskMap.set(key, serverTask)
           } else {
@@ -118,7 +118,7 @@ export function useTorrent(): {
 
         // 2. 建立本地任务 Map
         localTasks.forEach((localTask) => {
-          const key = localTask.infoHash || localTask.initURL
+          const key = localTask.initURL || localTask.infoHash
           if (key) {
             localTaskMap.set(key, localTask)
           }
@@ -139,13 +139,7 @@ export function useTorrent(): {
             // 更新顶层属性 (排除 files)
             const { files: serverFiles, ...otherServerProps } = serverTask
             for (const propKey in otherServerProps) {
-              if (
-                updatedTask.hasOwnProperty(propKey) &&
-                updatedTask[propKey] !== otherServerProps[propKey]
-              ) {
-                // 避免直接赋值 paused 状态，除非你想让服务器状态覆盖UI操作？
-                // 通常 paused 状态由 UI (resume/pause 按钮) 和 服务器 (实际停止/开始) 共同决定
-                // 也许只同步 paused 状态如果本地任务当前不是暂停中？ 或者让服务器状态优先？
+              if (updatedTask[propKey] !== otherServerProps[propKey]) {
                 // 暂时让服务器状态优先:
                 updatedTask[propKey] = otherServerProps[propKey]
                 taskUpdated = true

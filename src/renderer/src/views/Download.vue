@@ -487,18 +487,18 @@ function download(): void {
     return
   }
 
-  // ClientStore.AlltorrentsStore.push({
-  //   infoHash: magUrl.value,
-  //   name: normalize(magUrl.value, 'dn') || magUrl.value,
-  //   magnetURI: magUrl.value,
-  //   initURL: magUrl.value,
-  //   fileSelected: false,
-  //   files: [],
-  //   selectedSize: 0,
-  //   selectedTotal: 0,
-  //   cleared: false,
-  //   error: ''
-  // })
+  ClientStore.AlltorrentsStore.push({
+    infoHash: magUrl.value,
+    name: normalize(magUrl.value, 'dn') || magUrl.value,
+    magnetURI: magUrl.value,
+    initURL: magUrl.value,
+    fileSelected: false,
+    files: [],
+    selectedSize: 0,
+    selectedTotal: 0,
+    cleared: false,
+    error: ''
+  })
 
   window.electron.ipcRenderer.send('addTorrent', magUrl.value)
   window.electron.ipcRenderer.send('writeTorrent')
