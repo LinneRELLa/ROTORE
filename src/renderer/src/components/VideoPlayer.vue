@@ -208,7 +208,6 @@ async function discoverSubtitleTracks(inputVideoPath: string) {
   try {
     // !!! 清空之前的日志记录，准备接收本次操作的日志 !!!
     ffmpegLogs.value = []
-
     // --- 读取视频文件并写入 VFS ---
     const inputData: Buffer = await window.nodeAPI.fs.readFile(inputVideoPath)
     const inputUint8Array = new Uint8Array(

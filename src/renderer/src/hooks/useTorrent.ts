@@ -94,7 +94,7 @@ export function useTorrent(): {
     window.electron.ipcRenderer.on(
       'update-clients',
       (_event, tasksFromServer: ITorrentRender[]) => {
-        // console.log('Received update-clients data:', tasksFromServer); // 减少频繁输出
+        // console.log('Received update-clients data:', tasksFromServer) // 减少频繁输出
 
         // 更新 clientTorrentsStore (如果它有其他用途)
         ClientStore.clientTorrentsStore = tasksFromServer
@@ -129,6 +129,9 @@ export function useTorrent(): {
 
         // 3. 遍历服务端任务：更新现有或识别新增
         serverTaskMap.forEach((serverTask, key) => {
+          if (!serverTask.initURL) {
+            return
+          } //解析中的任务，不更新
           const localTask = localTaskMap.get(key)
 
           if (localTask) {
