@@ -93,3 +93,9 @@ $ npm run build:linux
 
 本项目基于 GNU 通用公共许可证 v3.0 (GPLv3) 进行许可。
 详细内容请查看 [LICENSE](LICENSE) 文件。
+
+## 依赖项 (Dependencies)
+
+本项目使用了以下主要的开源库：
+* **WebTorrent** ([https://webtorrent.io/](https://webtorrent.io/)) - Licensed under the MIT License
+* **FFmpeg** ([https://ffmpeg.org/](https://ffmpeg.org/)) - Licensed under the GNU LGPLv2.1 or later / GNU GPLv2 or later
