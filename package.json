@@ -1,6 +1,6 @@
 {
   "name": "ROTORE",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "ROTORE",
   "main": "./out/main/index.js",
   "author": "example.com",
@@ -21,19 +21,22 @@
     "build:linux": "npm run build && electron-builder --linux"
   },
   "build": {
-    "extraResources": [{
-      "from": "config/",
-      "to": "config/",
-      "filter": [
-        "**/*"
-      ]
-    }, {
-      "from": "ffmpeg/",
-      "to": "ffmpeg/",
-      "filter": [
-        "**/*"
-      ]
-    }],
+    "extraResources": [
+      {
+        "from": "config/",
+        "to": "config/",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "ffmpeg/",
+        "to": "ffmpeg/",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
@@ -41,12 +44,14 @@
     "win": {
       "icon": "resources/x1.ico"
     },
-    "fileAssociations": [{
-      "ext": "torrent",
-      "name": "Torrent 文件",
-      "description": "BitTorrent 种子文件",
-      "role": "Viewer"
-    }]
+    "fileAssociations": [
+      {
+        "ext": "torrent",
+        "name": "Torrent 文件",
+        "description": "BitTorrent 种子文件",
+        "role": "Viewer"
+      }
+    ]
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",
