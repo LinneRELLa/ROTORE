@@ -50,7 +50,7 @@
 
 - 侧边栏功能自定义
 
-- 内嵌字幕播放处理（已在测试分支实现，需要进一步测试）
+- 内封字幕播放处理（已在测试分支实现，需要进一步测试）
 <div>
 	<img src="https://github.com/LinneRELLa/ElectronTorrent/blob/main/resources/l2.png" />
 </div>
