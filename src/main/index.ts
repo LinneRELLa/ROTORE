@@ -10,11 +10,12 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/x1.ico?asset' // 确保图标路径正确
 import { execFile } from 'child_process'
-import { networkInterfaces } from 'os'
+import { networkInterfaces, tmpdir } from 'os'
 import * as fs from 'fs'
 import type WebTorrent from 'webtorrent' // 导入 WebTorrent 类型 (如果安装了 @types/webtorrent)
 // import trackerlist from './trackerlist.json' // --- REMOVED:不再从本地文件读取 ---
 import * as https from 'https' // --- ADDED: 用于发起 HTTPS 请求 ---
+import { spawn } from 'child_process' // 导入 spawn 用于执行外部程序
 
 // --- 全局变量 ---
 let mainWindow: BrowserWindow | null = null // 主窗口实例
@@ -524,7 +525,7 @@ ipcMain.on('toggle-devtools', () => BrowserWindow.getFocusedWindow()?.webContent
 ipcMain.on('ping', () => console.log('pong'))
 
 ipcMain.handle('getPath', async () => configPath)
-ipcMain.handle('getFFPath', async () => FFPath)
+// ipcMain.handle('getFFPath', async () => FFPath)
 
 ipcMain.handle('getDownloadStore', async () => {
   try {
@@ -666,7 +667,7 @@ if (!gotTheLock) {
     app.on('browser-window-created', (_, window) => {
       optimizer.watchWindowShortcuts(window)
     })
-
+    registerIpcHandlers()
     createWindow()
 
     // Keep original startup argument parsing logic
@@ -712,3 +713,217 @@ app.on('before-quit', () => {
   // Keep original logic (only clearing timer)
   // if (timesignal) clearTimeout(timesignal)
 })
+
+// 用于注册 IPC 处理程序的函数
+function registerIpcHandlers() {
+  console.log('[主进程] 正在注册 IPC 处理程序...')
+
+  // 获取 FFmpeg 路径的处理程序 (Vue 组件中已使用)
+  // 你可能已经有此逻辑或以不同方式获取路径。请按需调整。
+  ipcMain.handle('getFFPath', async () => {
+    // 示例：假设 ffmpeg.exe 在打包后应用的 resources 目录下的 'ffmpeg' 文件夹中
+    // 请根据你打包时实际放置 ffmpeg.exe 的位置调整此路径。
+    // 开发环境下路径可能不同，考虑使用环境变量或配置设置。
+    let basePath
+    if (app.isPackaged) {
+      // 打包后的应用中 ffmpeg 的示例路径
+      basePath = join(process.resourcesPath, 'ffmpeg')
+    } else {
+      // 开发环境下的示例路径 - 根据你的项目结构调整
+      basePath = join(app.getAppPath(), 'ffmpeg')
+      // 或者: basePath = path.resolve(__dirname, '../../extraResources/ffmpeg');
+    }
+    console.log(`[主进程] 确定的 FFmpeg 基础路径: ${basePath}`)
+    // 基本检查目录和文件是否存在
+    try {
+      fs.accessSync(basePath) // 检查目录是否存在
+      const exePath = join(basePath, 'ffmpeg.exe')
+      fs.accessSync(exePath) // 检查 ffmpeg.exe 是否在目录内
+      console.log(`[主进程] 在以下位置找到 FFmpeg 可执行文件: ${exePath}`)
+      return basePath // 返回包含 ffmpeg.exe 的目录路径
+    } catch (error) {
+      console.error(`[主进程] FFmpeg 路径检查失败于 ${basePath}:`, error)
+      // 这里可以抛出错误或返回 null/undefined，取决于渲染进程应如何处理
+      // 抛出错误会使 invoke 调用被 reject
+      throw new Error(`在预期位置未找到 FFmpeg 目录或可执行文件: ${basePath}`)
+    }
+  })
+
+  // --- 用于原生 FFMPEG 的新处理程序 ---
+
+  // 使用原生 ffmpeg 发现字幕轨道的处理程序
+  ipcMain.handle('discover-subtitles', async (_, videoPath, ffmpegExePath) => {
+    console.log(`[主进程] 正在为 ${videoPath} 使用 ${ffmpegExePath} 发现字幕`)
+    return new Promise((resolve, reject) => {
+      // ffmpeg 探测文件的参数。'-hide_banner' 可以减少不必要的输出。
+      const args = ['-i', videoPath, '-hide_banner']
+      let stderrOutput = '' // 用于累积 stderr 输出
+      const subs: { index: number; language?: string; codec?: string; label: string }[] = []
+      let subtitleCounter = 0 // 使用计数器作为我们传递给 -map 的索引
+
+      try {
+        // 启动 ffmpeg 进程。windowsHide: true 可防止在 Windows 上弹出控制台窗口。
+        const ffmpegProcess = spawn(ffmpegExePath, args, { windowsHide: true })
+
+        // 监听 stderr 输出
+        ffmpegProcess.stderr.on('data', (data) => {
+          stderrOutput += data.toString()
+          // 可选：可以在这里尝试实时解析，但关闭时解析更简单。
+        })
+
+        // 监听进程关闭事件
+        ffmpegProcess.on('close', (code) => {
+          console.log(`[主进程] FFmpeg 发现进程退出，退出码: ${code}`)
+
+          // 解析累积的 stderr 输出
+          // 正则表达式解释见上一个英文回答
+          const streamRegex = /^\s*Stream #\d+:(\d+)(?:\((\w+)\))?:\s+Subtitle:\s+([\w-]+)/gm
+          let match
+
+          console.log('[主进程] 正在解析 FFmpeg stderr 以查找字幕...')
+          // console.log('--- FFmpeg stderr ---');
+          // console.log(stderrOutput); // 取消注释以查看完整 stderr 输出
+          // console.log('---------------------');
+
+          // 循环匹配所有字幕流
+          while ((match = streamRegex.exec(stderrOutput)) !== null) {
+            // const ffmpegIndex = parseInt(match[1], 10); // FFmpeg 内部流索引
+            const language = match[2] || undefined // 语言代码 (可选)
+            const codec = match[3] || undefined // 字幕编码 (可选)
+            // 重要：使用我们自己的计数器作为索引，因为这是 `-map 0:s:X` 所期望的
+            const ourIndex = subtitleCounter
+            const label = `轨道 ${ourIndex}${language ? ` (${language})` : ''}${codec ? `: ${codec}` : ''}`
+
+            subs.push({ index: ourIndex, language, codec, label })
+            console.log(
+              `[主进程] 发现字幕轨道: Index=${ourIndex}, Lang=${language}, Codec=${codec}`
+            )
+            subtitleCounter++ // 仅在找到字幕流时增加计数器
+          }
+
+          console.log(`[主进程] 发现完成。找到 ${subs.length} 条字幕轨道。`)
+          resolve({ subtitles: subs }) // 用找到的轨道数组来 resolve Promise
+        })
+
+        // 监听进程启动错误
+        ffmpegProcess.on('error', (err) => {
+          console.error('[主进程] 启动 FFmpeg 发现进程失败:', err)
+          reject(new Error(`无法启动 FFmpeg 进行扫描: ${err.message}`))
+        })
+      } catch (error) {
+        console.error('[主进程] 设置 FFmpeg 发现时出错:', error)
+        reject(error) // 捕获 spawn 本身的同步错误
+      }
+    })
+  })
+
+  // 使用原生 ffmpeg 提取特定字幕轨道的处理程序
+  ipcMain.handle('extract-subtitle', async (_, videoPath, ffmpegExePath, subtitleIndex) => {
+    console.log(`[主进程] 正在从 ${videoPath} 提取字幕索引 ${subtitleIndex}`)
+    const tempDir = tmpdir() // 获取系统临时目录
+    const tempVttFileName = `extracted-subtitle-${Date.now()}.vtt` // 生成唯一的临时文件名
+    const tempVttFilePath = join(tempDir, tempVttFileName) // 构造完整临时文件路径
+    console.log(`[主进程] 将 VTT 输出到临时路径: ${tempVttFilePath}`)
+
+    // ffmpeg 提取参数
+    const args = [
+      '-y', // 无需询问即覆盖输出文件
+      '-i',
+      videoPath, // 输入文件
+      '-map',
+      `0:s:${subtitleIndex}`, // 选择指定的字幕流 (0基索引)
+      '-c:s',
+      'webvtt', // 将字幕编码转换为 WebVTT
+      tempVttFilePath // 输出文件路径
+    ]
+
+    return new Promise((resolve, reject) => {
+      try {
+        console.log(`[主进程] 正在启动 FFmpeg: ${ffmpegExePath} ${args.join(' ')}`)
+        const ffmpegProcess = spawn(ffmpegExePath, args, { windowsHide: true })
+
+        let stderrOutput = '' // 收集 stderr 用于调试
+        ffmpegProcess.stderr.on('data', (data) => {
+          stderrOutput += data.toString()
+          // console.log(`[FFmpeg stderr]: ${data}`); // 取消注释以获取详细日志
+        })
+
+        ffmpegProcess.stdout.on('data', (data) => {
+          // console.log(`[FFmpeg stdout]: ${data}`); // 字幕提取通常没有 stdout 输出
+        })
+
+        // 监听进程关闭
+        ffmpegProcess.on('close', async (code) => {
+          console.log(`[主进程] FFmpeg 提取进程退出，退出码: ${code}`)
+          if (code === 0) {
+            // 成功退出，但在 resolve 前验证文件是否存在且可读
+            try {
+              fs.accessSync(tempVttFilePath, fs.constants.R_OK) // 检查文件是否可读
+              console.log(`[主进程] VTT 文件成功创建: ${tempVttFilePath}`)
+              resolve({ vttFilePath: tempVttFilePath }) // Resolve Promise，并包含文件路径
+            } catch (fileError) {
+              console.error(
+                `[主进程] FFmpeg 成功退出(code 0)，但在 ${tempVttFilePath} 未找到 VTT 文件或文件不可读`,
+                fileError
+              )
+              console.error('[主进程] FFmpeg stderr 输出为:\n', stderrOutput) // 打印 stderr 以帮助诊断
+              reject(new Error('FFmpeg 运行成功，但无法访问生成的字幕文件。'))
+            }
+          } else {
+            // 执行失败
+            console.error(`[主进程] FFmpeg 提取失败，退出码: ${code}.`)
+            console.error('[主进程] FFmpeg stderr 输出为:\n', stderrOutput) // 打印 stderr
+            // 尝试删除可能生成的不完整或空文件
+            try {
+              fs.unlinkSync(tempVttFilePath)
+            } catch (e) {
+              /* 忽略清理错误 */
+            }
+            reject(new Error(`FFmpeg 提取字幕失败，退出码: ${code}. 查看主进程日志获取详细信息。`))
+          }
+        })
+
+        // 监听进程启动错误
+        ffmpegProcess.on('error', (err) => {
+          console.error('[主进程] 启动 FFmpeg 提取进程失败:', err)
+          reject(new Error(`无法启动 FFmpeg 进行提取: ${err.message}`))
+        })
+      } catch (error) {
+        console.error('[主进程] 设置 FFmpeg 提取时出错:', error)
+        reject(error) // 捕获 spawn 的同步错误
+      }
+    })
+  })
+
+  // 清理临时 VTT 文件的处理程序
+  ipcMain.handle('cleanup-temp-file', async (_, filePath) => {
+    console.log(`[主进程] 收到清理临时文件的请求: ${filePath}`)
+    if (!filePath || typeof filePath !== 'string') {
+      console.warn('[主进程] 收到无效的文件路径进行清理。')
+      // 返回 success:false 可能比抛出错误更好，允许渲染进程继续
+      return { success: false, message: '无效的文件路径' }
+    }
+
+    // 可选的安全检查：确保文件确实在临时目录中
+    const tempDir = tmpdir()
+    if (!filePath.startsWith(tempDir)) {
+      console.warn(`[主进程] 尝试清理临时目录之外的文件: ${filePath}。拒绝请求。`)
+      return { success: false, message: '不允许清理临时目录之外的文件' }
+    }
+
+    try {
+       fs.unlinkSync(filePath) // 删除文件
+      console.log(`[主进程] 成功清理临时文件: ${filePath}`)
+      return { success: true }
+    } catch (error: any) {
+      // 如果文件已经不存在，也算清理成功（幂等性）
+      if (error.code === 'ENOENT') {
+        console.log(`[主进程] 临时文件已删除或从未存在: ${filePath}`)
+        return { success: true, message: '文件已不存在' }
+      }
+      // 对于其他错误，报告失败
+      console.error(`[主进程] 清理临时文件 ${filePath} 失败:`, error)
+      return { success: false, message: `清理失败: ${error.message}` }
+    }
+  })
+}
