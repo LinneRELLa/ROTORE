@@ -42,6 +42,11 @@ const router = createRouter({
       name: 'option',
       component: (): Promise<Component> => import('@renderer/views/option.vue')
     },
+    {
+      path: '/chat',
+      name: 'chat',
+      component: (): Promise<Component> => import('@renderer/views/ChatComponent.vue')
+    },
 
   ]
 })

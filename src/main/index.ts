@@ -214,7 +214,7 @@ function addTorrentToClient(identifier: string | Buffer, resume: boolean = false
   // --- MODIFIED: 使用动态获取的 Tracker 列表 ---
   console.log(`[内部添加] 使用的 Tracker 列表数量:`, dynamicTrackerList.length)
   const trackers = dynamicTrackerList // 直接使用全局变量中存储的列表
-
+ console.log(identifier,'identifier', typeof identifier)
   try {
     webtorrentClient.add(
       identifier,

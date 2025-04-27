@@ -94,7 +94,7 @@ export function useTorrent(): {
     window.electron.ipcRenderer.on(
       'update-clients',
       (_event, tasksFromServer: ITorrentRender[]) => {
-        // console.log('Received update-clients data:', tasksFromServer) // 减少频繁输出
+        console.log('Received update-clients data:', tasksFromServer) // 减少频繁输出
 
         // 更新 clientTorrentsStore (如果它有其他用途)
         ClientStore.clientTorrentsStore = tasksFromServer
