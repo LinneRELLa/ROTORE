@@ -216,6 +216,7 @@ function addTorrentToClient(identifier: string | Buffer, resume: boolean = false
   const trackers = dynamicTrackerList // 直接使用全局变量中存储的列表
 
   try {
+    console.log('identifier', identifier, typeof identifier === 'string')
     webtorrentClient.add(
       identifier,
       // --- MODIFIED: announce 使用获取到的 trackers ---
@@ -912,7 +913,7 @@ function registerIpcHandlers() {
     }
 
     try {
-       fs.unlinkSync(filePath) // 删除文件
+      fs.unlinkSync(filePath) // 删除文件
       console.log(`[主进程] 成功清理临时文件: ${filePath}`)
       return { success: true }
     } catch (error: any) {

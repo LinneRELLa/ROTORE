@@ -56,6 +56,11 @@ const response = ref('')
 // const url = ref<string|undefined>(undefined)
 // const des = ref<string|undefined>(undefined)
 
+defineOptions({
+  name: 'detail'
+})
+
+
 const route = useRoute()
 // const store = useStore()
 

@@ -1,8 +1,8 @@
 <!--
  * @Author: chengp 3223961933@qq.com
  * @Date: 2025-03-11 13:33:14
- * @LastEditors: chengp 3223961933@qq.com
- * @LastEditTime: 2025-04-16 14:35:50
+ * @LastEditors: Linne Rella 3223961933@qq.com
+ * @LastEditTime: 2025-05-04 11:03:23
  * @FilePath: \torrent\src\renderer\src\App.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -21,6 +21,9 @@ const { watchTorrents } = useTorrent()
 import { useFile } from '@renderer/hooks/useFile'
 const { readJSON, ConfigStore } = useFile()
 import type { IPathConfig } from '@Type/index'
+
+import { useNavigationStore } from '@renderer/store/navigation'
+const navigationStore = useNavigationStore() // 2. 获取 Store 实例
 
 let PathConfig: IPathConfig = {
   base: '',
@@ -70,6 +73,7 @@ document.addEventListener('keydown', (e) => {
 
 const navRoutes = [
   { path: '/home', name: '首页', icon: 'House' },
+
   { path: '/download', name: '下载', icon: 'Download' },
   { path: '/option', name: '设置', icon: 'Setting' }
   // 其他路由...
@@ -108,18 +112,38 @@ const navRoutes = [
             active-class="active"
           >
             <el-tooltip :content="route.name" placement="right" :show-arrow="false" :offset="15">
-                <el-icon class="nav-icon">
-                  <component :is="route.icon" />
-                </el-icon>
+              <el-icon class="nav-icon">
+                <component :is="route.icon" />
+              </el-icon>
             </el-tooltip>
-            </router-link>
+          </router-link>
+
+          <router-link
+            v-if="navigationStore.hasLastDetail"
+            :to="navigationStore.lastDetailPath"
+            class="nav-item"
+            active-class="active"
+          >
+            <el-tooltip
+              :content="navigationStore.lastDetailName || '上次详情'"
+              placement="right"
+              :show-arrow="false"
+              :offset="15"
+            >
+              <el-icon class="nav-icon">
+                <InfoFilled />
+              </el-icon>
+            </el-tooltip>
+          </router-link>
         </div>
       </nav>
 
       <div class="content-wrapper">
-        <router-view v-slot="{ Component }">
+        <router-view v-slot="{ Component, route }">
           <transition name="fade-transform" mode="out-in">
-            <component :is="Component" />
+            <keep-alive include="detail">
+              <component :is="Component" :key="route.fullPath" />
+            </keep-alive>
           </transition>
         </router-view>
       </div>
@@ -133,8 +157,9 @@ html {
   padding: 0;
   margin: 0;
   overflow: hidden; // 防止根元素滚动
-  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
-    '微软雅黑', Arial, sans-serif; // 更现代的字体栈
+  font-family:
+    'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑',
+    Arial, sans-serif; // 更现代的字体栈
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
@@ -255,7 +280,7 @@ html {
         color: white;
       }
       &.minimize:hover {
-         background: rgba(255, 255, 255, 0.15); // 最小化悬浮背景
+        background: rgba(255, 255, 255, 0.15); // 最小化悬浮背景
       }
     }
 
