@@ -284,7 +284,7 @@ async function discoverSubtitleTracksWasm(videoFile: File) {
       await ffmpeg.exec([
         '-hide_banner',
         '-i',
-        `${mountPoint}/${ffmpegInputFilename}`,
+        `${mountPoint}/${videoFile.name}`,
         '-t',
         '0.1',
         '-f',
@@ -294,6 +294,8 @@ async function discoverSubtitleTracksWasm(videoFile: File) {
     } catch (error) {
       console.log(error)
     }
+
+    console.log('[WASM] FFmpeg 执行完成，开始解析日志...',ffmpegLogOutput.value)
     // FFmpeg 对于没有输出文件的操作，如果成功解析输入但没有做任何转换，可能会以非0代码退出，这通常是正常的。
     // 我们主要依赖日志输出来获取信息。
 
@@ -382,7 +384,7 @@ async function extractAndSetSubtitlesWasm(videoFile: File, subtitleTrackIndex: n
     const execArgs = [
       '-hide_banner',
       '-i',
-      `${mountPoint}/${ffmpegInputFilename}`,
+      `${mountPoint}/${videoFile.name}`,
       '-map',
       `0:s:${subtitleTrackIndex}`,
       '-c:s',
