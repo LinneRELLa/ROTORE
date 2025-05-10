@@ -1,7 +1,7 @@
 <!--
  * @Author: Linne Rella 3223961933@qq.com
  * @Date: 2025-03-20 18:08:34
- * @LastEditTime: 2025-04-21 09:38:25
+ * @LastEditTime: 2025-05-10 11:45:18
  * @FilePath: \electronTorrent\src\renderer\src\views\Download.vue
  * @Date: 2025-03-17 14:28:24
  * @LastEditors: chengp 3223961933@qq.com
@@ -68,13 +68,28 @@
       </el-input>
     </div>
 
+    <!-- 搜索区域 -->
+    <div class="search-section">
+      <el-input
+        v-model="searchQuery"
+        placeholder="按任务名称搜索"
+        clearable
+        size="large"
+        class="search-input"
+      >
+        <template #prepend>
+          <el-icon><Search /></el-icon>
+        </template>
+      </el-input>
+    </div>
+
     <!-- 主要内容区域 -->
     <div class="main-content" :class="{ 'has-selected': selectedTask }">
       <!-- 下载任务列表 -->
       <div class="task-list-wrapper">
         <div class="task-list">
           <el-card
-            v-for="x in ClientStore.AlltorrentsStore"
+            v-for="x in filteredTorrents"
             :key="x.infoHash"
             class="task-card"
             shadow="hover"
@@ -309,12 +324,13 @@ import { ITorrent } from '@Type/index'
 import { ref, watch, computed, onBeforeUnmount, nextTick, onMounted } from 'vue'
 import { useTorrent } from '@renderer/hooks/useTorrent'
 import * as echarts from 'echarts'
-import { ElNotification } from 'element-plus'
+import { ElNotification, ElMessage } from 'element-plus'
 const { join } = window.nodeAPI.path
 const { ClientStore } = useTorrent()
 const FileDelte = ref<boolean>(false)
 let magUrl = ref<string>('')
 let selectPop = ref<boolean>(false)
+const searchQuery = ref<string>('')
 
 const selectTorrentFile = async (): Promise<void> => {
   try {
@@ -417,7 +433,7 @@ function normalize(magnet: string, key: string): string | null {
 // }
 
 //判断是否有效
-function isValidTorrentIdentifier(input: any): boolean {
+function isValidTorrentIdentifier(input: string | Uint8Array | Record<string, any>): boolean {
   if (typeof input === 'string') {
     const magnetRegex = /^magnet:\?xt=urn:btih:([a-fA-F0-9]{40}|[A-Z2-7]{32})(?:&.*)?$/i
     if (magnetRegex.test(input)) return true
@@ -446,6 +462,16 @@ function isValidTorrentIdentifier(input: any): boolean {
 let isVliadUrl = computed(() => {
   console.log(isValidTorrentIdentifier(magUrl.value), 'isVliadUrl')
   return isValidTorrentIdentifier(magUrl.value)
+})
+
+// 新增计算属性用于过滤任务
+const filteredTorrents = computed(() => {
+  if (!searchQuery.value) {
+    return ClientStore.AlltorrentsStore
+  }
+  return ClientStore.AlltorrentsStore.filter((torrent) =>
+    torrent.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
 })
 
 function formatSize(size: number): string {
@@ -504,7 +530,7 @@ function download(): void {
     cleared: false,
     error: ''
   }
-  ClientStore.AlltorrentsStore.push(toadd)
+  ClientStore.AlltorrentsStore.unshift(toadd)
   selectFile(toadd)
   window.electron.ipcRenderer.send('addTorrent', magUrl.value)
   window.electron.ipcRenderer.send('writeTorrent')
@@ -784,6 +810,13 @@ onMounted(() => {
         padding: 0 1.5rem;
       }
     }
+  }
+}
+
+.search-section {
+  margin-bottom: 2rem;
+  .search-input {
+    // 可根据需要添加样式
   }
 }
 
