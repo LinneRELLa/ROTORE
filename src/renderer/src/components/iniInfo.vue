@@ -1,5 +1,3 @@
-
-
 <template>
   <div class="ini-info">
     <div class="background-overlay"></div> <div class="content-container"> <header class="controls">
@@ -214,7 +212,6 @@ function observeImages(): void {
 onMounted(() => {})
 </script>
 <style scoped lang="less">
-@import '@renderer/assets/variables.less'; // 引入全局变量
 .ini-info {
   height: 100%; // 继承父容器高度
   width: 100%;

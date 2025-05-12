@@ -33,6 +33,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import 'element-plus/dist/index.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
 import { createPinia } from 'pinia'
+// import '@renderer/assets/theme.less'; // 新增导入
 
 console.log(window.electron)
 const app = createApp(App)

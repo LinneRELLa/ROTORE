@@ -120,7 +120,7 @@ const navRoutes = [
 
           <router-link
             v-if="navigationStore.hasLastDetail"
-            :to="navigationStore.lastDetailPath"
+            :to="navigationStore.lastDetailPath || '/'"
             class="nav-item"
             active-class="active"
           >
@@ -152,6 +152,8 @@ const navRoutes = [
 </template>
 
 <style lang="less">
+
+
 body,
 html {
   padding: 0;

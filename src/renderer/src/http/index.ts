@@ -37,26 +37,6 @@ await new Promise((resolve) => {
   })
 })
 
-// function readJSON(path): object {
-//   try {
-//     const data = window.nodeAPI.fs.readFileSync(path, 'utf8')
-//     const jsonData = JSON.parse(data)
-//     return jsonData
-//   } catch (error) {
-//     return { message: error }
-//   }
-// }
-// const fs = window.nodeAPI.fs
-// let publicpath
-// if (process.env.NODE_ENV == 'development') {
-//   publicpath = path.join(__dirname, '../../../../../../src/config/httppath.json')
-//   console.log(__dirname)
-// } else {
-//   publicpath = path.join(__dirname, '../../config/httppath.json')
-// }
-
-// const res = JSON.parse(fs.readFileSync(publicpath, 'utf-8'))
-// console.log(res, 'res')
 const http = axios.create({
   baseURL: PathConfig.base,
   timeout: 0,
