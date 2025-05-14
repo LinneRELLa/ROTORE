@@ -16,12 +16,7 @@ import type WebTorrent from 'webtorrent' // 导入 WebTorrent 类型 (如果安�
 // import trackerlist from './trackerlist.json' // --- REMOVED:不再从本地文件读取 ---
 import * as https from 'https' // --- ADDED: 用于发起 HTTPS 请求 ---
 import { spawn } from 'child_process' // 导入 spawn 用于执行外部程序
-import { fileURLToPath } from 'node:url'; 
-import { dirname } from 'node:path';
-import  WebTorrent from 'webtorrent'
-const filenamex = fileURLToPath(import.meta.url);
-const dirnamex = dirname(filenamex);
-console.log(dirnamex,'dirnamex')
+import WebTorrent from 'webtorrent'
 // --- 全局变量 ---
 let mainWindow: BrowserWindow | null = null // 主窗口实例
 let webtorrentClient: WebTorrent.Instance | null = null // WebTorrent 客户端实例 (使用类型或 any)
@@ -260,7 +255,7 @@ function createWindow(): void {
     autoHideMenuBar: false, // Keep original value
     icon: process.platform === 'darwin' ? undefined : icon,
     webPreferences: {
-      preload: join(dirnamex, '../preload/index.mjs'),
+      preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
       webSecurity: false,
       plugins: true,
@@ -307,7 +302,7 @@ function createWindow(): void {
   let timesignal: NodeJS.Timeout | null = null
 
   async function loadWebTorrent(): Promise<void> {
-
+    const WebTorrent = (await import('webtorrent')).default
 
     async function createWebT(): Promise<void> {
       await new Promise<void>(async (resolve, reject) => {
